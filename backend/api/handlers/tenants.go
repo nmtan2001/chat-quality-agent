@@ -106,9 +106,10 @@ func CreateTenant(c *gin.Context) {
 	// Add creator as owner
 	userID := middleware.GetUserID(c)
 	ut := models.UserTenant{
-		UserID:   userID,
-		TenantID: tenant.ID,
-		Role:     "owner",
+		UserID:      userID,
+		TenantID:    tenant.ID,
+		Role:        "owner",
+		Permissions: "{}", // Default empty JSON object for PostgreSQL jsonb compatibility
 	}
 	db.DB.Create(&ut)
 
