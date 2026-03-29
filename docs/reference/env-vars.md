@@ -6,8 +6,7 @@ Danh sách đầy đủ các biến môi trường trong file `.env`.
 
 | Biến | Mô tả | Ví dụ |
 |------|-------|-------|
-| `DB_PASSWORD` | Mật khẩu MySQL cho user CQA | `openssl rand -hex 16` |
-| `MYSQL_ROOT_PASSWORD` | Mật khẩu root MySQL | `openssl rand -hex 16` |
+| `DB_PASSWORD` | Mật khẩu database cho user CQA | `openssl rand -hex 16` |
 | `JWT_SECRET` | Secret cho JWT tokens, tối thiểu 32 ký tự | `openssl rand -hex 32` |
 | `ENCRYPTION_KEY` | Key 32 bytes cho mã hóa AES-256-GCM | `openssl rand -hex 16` |
 
@@ -24,10 +23,11 @@ Danh sách đầy đủ các biến môi trường trong file `.env`.
 
 | Biến | Mô tả | Mặc định |
 |------|-------|----------|
-| `DB_HOST` | MySQL host | `db` |
-| `DB_PORT` | MySQL port | `3306` |
-| `DB_USER` | MySQL username | `cqa` |
-| `DB_PASSWORD` | MySQL password | |
+| `DB_TYPE` | Loại database (postgres/mysql) | `postgres` |
+| `DB_HOST` | Database host | `db` |
+| `DB_PORT` | Database port (5432 cho PostgreSQL, 3306 cho MySQL) | `5432` |
+| `DB_USER` | Database username | `cqa` |
+| `DB_PASSWORD` | Database password | |
 | `DB_NAME` | Tên database | `cqa` |
 
 ## Rate Limiting

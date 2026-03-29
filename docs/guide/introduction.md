@@ -32,7 +32,7 @@ Khi doanh nghiệp có nhiều kênh chat (Zalo OA, Facebook Messenger), việc 
 ```
 +-----------+     +-----------+
 | Zalo OA   |---->|           |     +----------+
-+-----------+     |  CQA App  |---->| MySQL DB |
++-----------+     |  CQA App  |---->| PostgreSQL |
 +-----------+     |  (Go)     |     +----------+
 | Facebook  |---->|           |
 +-----------+     +-----+-----+
