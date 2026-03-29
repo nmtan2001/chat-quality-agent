@@ -89,11 +89,15 @@ func InviteUser(c *gin.Context) {
 	}
 
 	// Add to tenant
+	permissions := req.Permissions
+	if permissions == "" {
+		permissions = "{}" // Default empty JSON object for PostgreSQL jsonb compatibility
+	}
 	ut := models.UserTenant{
 		UserID:      user.ID,
 		TenantID:    tenantID,
 		Role:        req.Role,
-		Permissions: req.Permissions,
+		Permissions: permissions,
 	}
 	db.DB.Create(&ut)
 
