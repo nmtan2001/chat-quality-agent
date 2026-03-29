@@ -1,6 +1,6 @@
 module github.com/nmtan2001/chat-quality-agent
 
-go 1.25.0
+go 1.21
 
 require (
 	github.com/anthropics/anthropic-sdk-go v1.27.1
@@ -8,10 +8,12 @@ require (
 	github.com/go-co-op/gocron/v2 v2.19.1
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
+	github.com/lib/pq v1.10.9
 	github.com/xuri/excelize/v2 v2.10.1
 	golang.org/x/crypto v0.49.0
 	google.golang.org/genai v1.51.0
 	gorm.io/driver/mysql v1.6.0
+	gorm.io/driver/postgres v1.5.9
 	gorm.io/gorm v1.31.1
 )
 

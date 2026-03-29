@@ -56,7 +56,7 @@ func NewClient(clientID, clientSecret string) *Client {
 func (c *Client) GetToken(ctx context.Context) (string, error) {
 	// Check if we have a valid token
 	c.mu.RLock()
-	if c.token != nil && c.token != "" && time.Now().Add(tokenRefreshBuffer).Before(c.tokenExpiresAt) {
+	if c.token != "" && time.Now().Add(tokenRefreshBuffer).Before(c.tokenExpiresAt) {
 		token := c.token
 		c.mu.RUnlock()
 		return token, nil
