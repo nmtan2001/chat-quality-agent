@@ -12,8 +12,8 @@ type Message struct {
 	SenderExternalID  string    `gorm:"type:varchar(255)" json:"sender_external_id"`
 	Content           string    `gorm:"type:text" json:"content"`
 	ContentType       string    `gorm:"type:varchar(50);default:'text'" json:"content_type"` // text | image | file | sticker
-	Attachments       string    `gorm:"type:json" json:"attachments"`
+	Attachments       string    `gorm:"type:jsonb" json:"attachments"`
 	SentAt            time.Time `gorm:"not null;index:idx_msg_conv_time" json:"sent_at"`
-	RawData           string    `gorm:"type:json" json:"raw_data,omitempty"`
+	RawData           string    `gorm:"type:jsonb" json:"raw_data,omitempty"`
 	CreatedAt         time.Time `gorm:"not null" json:"created_at"`
 }

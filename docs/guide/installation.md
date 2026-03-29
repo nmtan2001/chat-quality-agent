@@ -54,7 +54,6 @@ Mở file `.env`, điền các giá trị bắt buộc:
 ```bash
 # Tạo secrets ngẫu nhiên
 DB_PASSWORD=$(openssl rand -hex 16)
-MYSQL_ROOT_PASSWORD=$(openssl rand -hex 16)
 JWT_SECRET=$(openssl rand -hex 32)
 ENCRYPTION_KEY=$(openssl rand -hex 16)
 ```
@@ -83,7 +82,7 @@ Kết quả bình thường:
 ```
 NAME        STATUS         PORTS
 cqa-app     Up             0.0.0.0:8080->8080/tcp
-cqa-db      Up (healthy)   127.0.0.1:3306->3306/tcp
+cqa-db      Up (healthy)   127.0.0.1:5432->5432/tcp
 cqa-nginx   Up             0.0.0.0:80->80/tcp
 ```
 

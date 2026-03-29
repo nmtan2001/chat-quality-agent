@@ -10,11 +10,11 @@ type Job struct {
 	JobType     string `gorm:"type:varchar(30);not null" json:"job_type"` // qc_analysis | classification
 
 	// Input
-	InputChannelIDs string `gorm:"type:json;not null" json:"input_channel_ids"` // JSON array of channel UUIDs
+	InputChannelIDs string `gorm:"type:jsonb;not null" json:"input_channel_ids"` // JSON array of channel UUIDs
 
 	// Rules
 	RulesContent    string `gorm:"type:text" json:"rules_content"`    // Markdown for QC
-	RulesConfig     string `gorm:"type:json" json:"rules_config"`     // JSON array for classification
+	RulesConfig     string `gorm:"type:jsonb" json:"rules_config"`     // JSON array for classification
 	SkipConditions  string `gorm:"type:text" json:"skip_conditions"`  // Conditions to skip evaluation (QC only)
 
 	// AI
@@ -22,7 +22,7 @@ type Job struct {
 	AIModel    string `gorm:"type:varchar(100)" json:"ai_model"`
 
 	// Output
-	Outputs        string `gorm:"type:json;not null" json:"outputs"`                          // [{type, config...}]
+	Outputs        string `gorm:"type:jsonb;not null" json:"outputs"`                          // [{type, config...}]
 	OutputSchedule string `gorm:"type:varchar(20);default:'instant'" json:"output_schedule"`   // instant | scheduled | cron
 	OutputCron     string `gorm:"type:varchar(100)" json:"output_cron"`
 	OutputAt       *time.Time `json:"output_at"`
@@ -48,7 +48,7 @@ type JobRun struct {
 	StartedAt    time.Time  `gorm:"not null;index:idx_jobrun_job_started" json:"started_at"`
 	FinishedAt   *time.Time `json:"finished_at"`
 	Status       string     `gorm:"type:varchar(20);default:'running'" json:"status"` // running | success | error
-	Summary      string     `gorm:"type:json" json:"summary"`
+	Summary      string     `gorm:"type:jsonb" json:"summary"`
 	ErrorMessage string     `gorm:"type:text" json:"error_message,omitempty"`
 	CreatedAt    time.Time  `gorm:"not null" json:"created_at"`
 
@@ -64,7 +64,7 @@ type JobResult struct {
 	Severity       string    `gorm:"type:varchar(30)" json:"severity"`
 	RuleName       string    `gorm:"type:varchar(255)" json:"rule_name"`
 	Evidence       string    `gorm:"type:text" json:"evidence"`
-	Detail         string    `gorm:"type:json" json:"detail"`
+	Detail         string    `gorm:"type:jsonb" json:"detail"`
 	AIRawResponse  string    `gorm:"type:text" json:"ai_raw_response,omitempty"`
 	Confidence     float64   `json:"confidence"`
 	NotifiedAt     *time.Time `json:"notified_at"`
