@@ -94,7 +94,41 @@ func AutoMigrate() error {
 }
 
 func addUniqueConstraints() {
-	constraints := []struct {
+	// Detect database type
+	dbType := os.Getenv("DB_TYPE")
+	if dbType == "" {
+		// Auto-detect from DSN format
+		dsn, _ := DB.DB()
+		if dsn != nil {
+			// Try to detect from driver name
+			dbType = "mysql" // default
+		}
+	}
+
+	for _, c := range getUniqueConstraints() {
+		var sql string
+		if dbType == "postgres" {
+			sql = fmt.Sprintf(
+				"ALTER TABLE \"%s\" ADD CONSTRAINT \"%s\" UNIQUE (%s)",
+				c.table, c.name, c.columns,
+			)
+		} else {
+			sql = fmt.Sprintf(
+				"ALTER TABLE `%s` ADD UNIQUE INDEX `%s` (%s)",
+				c.table, c.name, c.columns,
+			)
+		}
+		// Ignore errors if constraint already exists
+		DB.Exec(sql)
+	}
+}
+
+func getUniqueConstraints() []struct {
+	table      string
+	name       string
+	columns    string
+} {
+	return []struct {
 		table      string
 		name       string
 		columns    string
@@ -102,15 +136,6 @@ func addUniqueConstraints() {
 		{"channels", "uq_channel_tenant_type_ext", "tenant_id, channel_type, external_id"},
 		{"conversations", "uq_conv_tenant_channel_ext", "tenant_id, channel_id, external_conversation_id"},
 		{"messages", "uq_msg_tenant_conv_ext", "tenant_id, conversation_id, external_message_id"},
-	}
-
-	for _, c := range constraints {
-		sql := fmt.Sprintf(
-			"ALTER TABLE `%s` ADD UNIQUE INDEX `%s` (%s)",
-			c.table, c.name, c.columns,
-		)
-		// Ignore errors if constraint already exists
-		DB.Exec(sql)
 	}
 }
 

@@ -20,7 +20,7 @@ type UserTenant struct {
 	UserID   string `gorm:"type:char(36);primaryKey" json:"user_id"`
 	TenantID    string `gorm:"type:char(36);primaryKey" json:"tenant_id"`
 	Role        string `gorm:"type:varchar(20);default:'member'" json:"role"` // owner | admin | member
-	Permissions string `gorm:"type:text" json:"permissions"`                 // JSON: {"channels":"rw","messages":"r","jobs":"rw","settings":"r"}
+	Permissions string `gorm:"type:jsonb" json:"permissions"`                 // JSON: {"channels":"rw","messages":"r","jobs":"rw","settings":"r"}
 }
 
 func (UserTenant) TableName() string {

@@ -6,7 +6,7 @@ type AppSetting struct {
 	ID             string    `gorm:"type:char(36);primaryKey" json:"id"`
 	TenantID       string    `gorm:"type:char(36);not null;uniqueIndex:idx_setting_tenant_key" json:"tenant_id"`
 	SettingKey     string    `gorm:"type:varchar(255);not null;uniqueIndex:idx_setting_tenant_key" json:"setting_key"`
-	ValueEncrypted []byte    `gorm:"type:varbinary(2048)" json:"-"`
+	ValueEncrypted []byte    `gorm:"type:bytea" json:"-"`
 	ValuePlain     string    `gorm:"type:text" json:"value_plain,omitempty"`
 	CreatedAt      time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt      time.Time `gorm:"not null" json:"updated_at"`
@@ -49,8 +49,8 @@ type OAuthClient struct {
 	ClientID         string    `gorm:"type:varchar(255);uniqueIndex;not null" json:"client_id"`
 	ClientSecretHash string    `gorm:"type:varchar(255);not null" json:"-"`
 	Name             string    `gorm:"type:varchar(255)" json:"name"`
-	RedirectURIs     string    `gorm:"type:json" json:"redirect_uris"`
-	Scopes           string    `gorm:"type:json" json:"scopes"`
+	RedirectURIs     string    `gorm:"type:jsonb" json:"redirect_uris"`
+	Scopes           string    `gorm:"type:jsonb" json:"scopes"`
 	UserID           string    `gorm:"type:char(36)" json:"user_id"`
 	CreatedAt        time.Time `gorm:"not null" json:"created_at"`
 }
@@ -75,7 +75,7 @@ type OAuthToken struct {
 	UserID           string    `gorm:"type:char(36);not null" json:"user_id"`
 	AccessTokenHash  string    `gorm:"type:varchar(255);not null;index:idx_oauth_access" json:"-"`
 	RefreshTokenHash string    `gorm:"type:varchar(255)" json:"-"`
-	Scopes           string    `gorm:"type:json" json:"scopes"`
+	Scopes           string    `gorm:"type:jsonb" json:"scopes"`
 	ExpiresAt        time.Time `gorm:"not null" json:"expires_at"`
 	CreatedAt        time.Time `gorm:"not null" json:"created_at"`
 }
