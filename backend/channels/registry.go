@@ -20,6 +20,12 @@ func NewAdapter(channelType string, credentialsJSON []byte) (ChannelAdapter, err
 			return nil, fmt.Errorf("invalid facebook credentials: %w", err)
 		}
 		return NewFacebookAdapter(creds), nil
+	case "guesty":
+		var creds GuestyCredentials
+		if err := json.Unmarshal(credentialsJSON, &creds); err != nil {
+			return nil, fmt.Errorf("invalid guesty credentials: %w", err)
+		}
+		return NewGuestyAdapter(creds), nil
 	default:
 		return nil, fmt.Errorf("unsupported channel type: %s", channelType)
 	}

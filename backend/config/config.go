@@ -33,6 +33,9 @@ type Config struct {
 	GuestyClientID     string
 	GuestyClientSecret string
 
+	// Svix Webhook Verification
+	SvixSecret string
+
 	// Environment
 	Env string // "development" | "production"
 }
@@ -51,9 +54,10 @@ func Load() (*Config, error) {
 		RateLimitPerIP:   getEnvInt("RATE_LIMIT_PER_IP", 500),
 		RateLimitPerUser: getEnvInt("RATE_LIMIT_PER_USER", 1000),
 		AIMaxTokens:      getEnvInt("AI_MAX_TOKENS", 16384),
-		GuestyClientID:   getEnv("GUESTY_CLIENT_ID", ""),
+		GuestyClientID:     getEnv("GUESTY_CLIENT_ID", ""),
 		GuestyClientSecret: getEnv("GUESTY_CLIENT_SECRET", ""),
-		Env:              getEnv("APP_ENV", "development"),
+		SvixSecret:         getEnv("SVIX_SECRET", ""),
+		Env:                getEnv("APP_ENV", "development"),
 	}
 
 	if cfg.JWTSecret == "" {

@@ -179,6 +179,9 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			// Notification logs
 			tenant.GET("/notification-logs", handlers.ListNotificationLogs)
 
+			// Guesty analytics
+			tenant.GET("/analytics/guesty", handlers.GetPropertyAnalytics)
+
 			// Demo data
 			tenant.GET("/demo/status", handlers.GetDemoStatus)
 			tenant.POST("/demo/import", middleware.RequireRole("owner", "admin"), handlers.ImportDemoData)
