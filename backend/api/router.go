@@ -129,8 +129,8 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 
 			// Guesty notification settings
 			tenant.GET("/guesty/:channelId/notifications", handlers.GetGuestyNotificationSettings)
-			tenant.PUT("/guesty/:channelId/notifications", handlers.UpdateGuestyNotificationSettings)
-			tenant.POST("/guesty/:channelId/notifications/test", handlers.TestGuestyNotification)
+			tenant.PUT("/guesty/:channelId/notifications", middleware.RequireRole("owner", "admin"), handlers.UpdateGuestyNotificationSettings)
+			tenant.POST("/guesty/:channelId/notifications/test", middleware.RequireRole("owner", "admin"), handlers.TestGuestyNotification)
 
 			// Conversations & Messages
 			tenant.GET("/onboarding-status", handlers.GetOnboardingStatus)

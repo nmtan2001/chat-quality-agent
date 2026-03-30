@@ -83,7 +83,10 @@ func SendGuestyAlert(ctx context.Context, details UrgentIssueDetails) error {
 	// Use custom template if configured, otherwise use default
 	body := buildDefaultGuestyAlertBody(details)
 	if settings.UseCustomTemplate && settings.CustomTemplate != "" {
-		body = renderGuestyCustomTemplate(settings.CustomTemplate, details)
+		// Sanitize custom template for security
+		sanitizedTemplate := SanitizeCustomTemplate(settings.CustomTemplate)
+		rendered := renderGuestyCustomTemplate(sanitizedTemplate, details)
+		body = rendered
 	}
 
 	// Send to each output and log
@@ -94,7 +97,13 @@ func SendGuestyAlert(ctx context.Context, details UrgentIssueDetails) error {
 			continue
 		}
 
-		sendErr := notifier.Send(ctx, subject, body)
+		// For Telegram, sanitize to remove HTML
+		sendBody := body
+		if output.Type == "telegram" {
+			sendBody = SanitizeForTelegram(body)
+		}
+
+		sendErr := notifier.Send(ctx, subject, sendBody)
 		status := "sent"
 		errMsg := ""
 		if sendErr != nil {

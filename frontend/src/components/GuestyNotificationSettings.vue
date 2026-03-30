@@ -144,9 +144,34 @@
           rows="8"
           variant="outlined"
           auto-grow
+          counter="10000"
         />
+        <v-btn
+          v-if="form.custom_template !== defaultTemplate"
+          variant="text"
+          size="x-small"
+          color="primary"
+          class="mt-2"
+          @click="form.custom_template = defaultTemplate"
+        >
+          <v-icon start size="small">mdi-restore</v-icon>
+          Khôi phục mặc định
+        </v-btn>
       </template>
     </div>
+
+    <!-- Save Error Alert -->
+    <v-alert
+      v-if="saveError"
+      type="error"
+      variant="tonal"
+      density="compact"
+      class="mb-4"
+      closable
+      @click:close="saveError = ''"
+    >
+      {{ saveError }}
+    </v-alert>
 
     <v-card-actions class="mt-4">
       <v-spacer />
@@ -157,8 +182,20 @@
         :loading="testing"
         :disabled="!canTest"
       >
+        <v-icon start>mdi-send-check</v-icon>
         Kiểm tra
       </v-btn>
+      <!-- Test Result Chip -->
+      <v-chip
+        v-if="testResult"
+        :color="testResult.success ? 'success' : 'error'"
+        size="small"
+        variant="tonal"
+        class="ml-2"
+      >
+        <v-icon start size="small">{{ testResult.success ? 'mdi-check' : 'mdi-alert-circle' }}</v-icon>
+        {{ testResult.message }}
+      </v-chip>
       <v-btn
         color="primary"
         @click="saveSettings"
@@ -180,6 +217,19 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits(['cancel', 'saved'])
+
+const defaultTemplate = `🚨 URGENT: {{category}} issue detected
+
+🏠 Property: {{listing_name}}
+👤 Guest: {{guest_name}}
+📅 Reservation: {{reservation_id}}
+
+❌ Issue: {{summary}}
+⚠️ Severity: {{severity}}
+📊 Confidence: {{confidence}}
+
+💬 Message:
+{{message}}`
 
 const form = reactive({
   is_enabled: true,
@@ -203,6 +253,8 @@ const form = reactive({
 
 const saving = ref(false)
 const testing = ref(false)
+const saveError = ref('')
+const testResult = ref<{ success: boolean; message: string } | null>(null)
 
 const canTest = computed(() => {
   return (form.telegram_enabled && form.telegram_config.bot_token && form.telegram_config.chat_id) ||
@@ -213,6 +265,10 @@ async function loadSettings() {
   try {
     const { data } = await api.get(`/tenants/${props.tenantId}/guesty/${props.channelId}/notifications`)
     Object.assign(form, data)
+    // Set default template if empty
+    if (form.use_custom_template && !form.custom_template) {
+      form.custom_template = defaultTemplate
+    }
   } catch (e: any) {
     console.error('Failed to load settings:', e)
   }
@@ -220,11 +276,13 @@ async function loadSettings() {
 
 async function saveSettings() {
   saving.value = true
+  saveError.value = ''
   try {
     await api.put(`/tenants/${props.tenantId}/guesty/${props.channelId}/notifications`, form)
     emit('saved')
   } catch (e: any) {
-    alert('Lưu thất bại: ' + (e.response?.data?.error || e.message))
+    const errorMsg = e.response?.data?.error || e.message
+    saveError.value = 'Lưu thất bại: ' + errorMsg
   } finally {
     saving.value = false
   }
@@ -232,11 +290,14 @@ async function saveSettings() {
 
 async function testSettings() {
   testing.value = true
+  testResult.value = null
+  saveError.value = ''
   try {
     await api.post(`/tenants/${props.tenantId}/guesty/${props.channelId}/notifications/test`)
-    alert('Đã gửi thông báo kiểm tra!')
+    testResult.value = { success: true, message: 'Gửi thành công!' }
   } catch (e: any) {
-    alert('Gửi thất bại: ' + (e.response?.data?.error || e.message))
+    const msg = e.response?.data?.error || e.message
+    testResult.value = { success: false, message: 'Gửi thất bại: ' + msg }
   } finally {
     testing.value = false
   }

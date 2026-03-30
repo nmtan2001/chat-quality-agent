@@ -82,10 +82,18 @@ func (d *Dispatcher) SendJobResults(ctx context.Context, job models.Job, run mod
 		body := defaultBody
 		link := fmt.Sprintf("%s/%s/jobs/%s", d.getBaseURL(), job.TenantID, job.ID)
 		if output.Template == "custom" && output.CustomTemplate != "" {
-			body = d.renderCustomTemplate(output.CustomTemplate, job.Name, total, passed, failed, issues, defaultBody, link)
+			// Sanitize custom template for security
+			sanitizedTemplate := SanitizeCustomTemplate(output.CustomTemplate)
+			body = d.renderCustomTemplate(sanitizedTemplate, job.Name, total, passed, failed, issues, defaultBody, link)
 		}
 
-		sendErr := notifier.Send(ctx, subject, body)
+		// For Telegram, sanitize to remove HTML
+		sendBody := body
+		if output.Type == "telegram" {
+			sendBody = SanitizeForTelegram(body)
+		}
+
+		sendErr := notifier.Send(ctx, subject, sendBody)
 		status := "sent"
 		errMsg := ""
 		if sendErr != nil {

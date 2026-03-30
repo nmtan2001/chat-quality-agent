@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,6 +15,34 @@ import (
 	"github.com/nmtan2001/chat-quality-agent/notifications"
 	"github.com/nmtan2001/chat-quality-agent/pkg"
 )
+
+const (
+	maxCustomTemplateLength = 10000
+	maxBotTokenLength       = 256
+	maxChatIDLength         = 128
+	maxEmailLength          = 256
+	minSMTPPort             = 1
+	maxSMTPPort             = 65535
+)
+
+var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+
+func validateEmailList(emails string) error {
+	if emails == "" {
+		return http.ErrNotSupported
+	}
+	for _, email := range strings.Split(emails, ",") {
+		email = strings.TrimSpace(email)
+		if email != "" && !emailRegex.MatchString(email) {
+			return http.ErrNotSupported
+		}
+	}
+	return nil
+}
+
+func validateEmail(email string) bool {
+	return emailRegex.MatchString(email)
+}
 
 type GuestyNotificationSettings struct {
 	IsEnabled         bool                   `json:"is_enabled"`
@@ -100,6 +130,73 @@ func UpdateGuestyNotificationSettings(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "details": err.Error()})
 		return
+	}
+
+	// Validate custom template length
+	if len(req.CustomTemplate) > maxCustomTemplateLength {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "custom_template_too_long", "details": "custom_template exceeds maximum length"})
+		return
+	}
+
+	// Validate Telegram config
+	if req.TelegramEnabled && req.TelegramConfig != nil {
+		botToken, _ := req.TelegramConfig["bot_token"]
+		chatID, _ := req.TelegramConfig["chat_id"]
+
+		if botToken == "" || chatID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_telegram_config", "details": "bot_token and chat_id are required when telegram is enabled"})
+			return
+		}
+
+		if len(botToken) > maxBotTokenLength {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_bot_token", "details": "bot_token exceeds maximum length"})
+			return
+		}
+
+		if len(chatID) > maxChatIDLength {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_chat_id", "details": "chat_id exceeds maximum length"})
+			return
+		}
+	}
+
+	// Validate Email config
+	if req.EmailEnabled && req.EmailConfig != nil {
+		smtpHost, _ := req.EmailConfig["smtp_host"].(string)
+		smtpPort, _ := req.EmailConfig["smtp_port"].(float64)
+		smtpUser, _ := req.EmailConfig["smtp_user"].(string)
+		from, _ := req.EmailConfig["from"].(string)
+		to, _ := req.EmailConfig["to"].(string)
+
+		if smtpHost == "" || from == "" || to == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_email_config", "details": "smtp_host, from, and to are required when email is enabled"})
+			return
+		}
+
+		if int(smtpPort) < minSMTPPort || int(smtpPort) > maxSMTPPort {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_smtp_port", "details": "smtp_port must be between 1 and 65535"})
+			return
+		}
+
+		if len(from) > maxEmailLength {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_from_email", "details": "from email exceeds maximum length"})
+			return
+		}
+
+		if len(to) > maxEmailLength {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_to_email", "details": "to email exceeds maximum length"})
+			return
+		}
+
+		// Validate email formats
+		if !validateEmail(from) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_from_email", "details": "from email is invalid"})
+			return
+		}
+
+		if err := validateEmailList(to); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_to_email", "details": "to email addresses are invalid"})
+			return
+		}
 	}
 
 	// Verify channel exists and is Guesty type
