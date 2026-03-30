@@ -456,10 +456,11 @@ async function createGuesty() {
     await channelStore.createChannel(tenantId.value, {
       channel_type: newChannel.channel_type,
       name: newChannel.name,
-      credentials: {
+      metadata: JSON.stringify({
         account_id: newChannel.creds.account_id,
-      },
-      metadata: JSON.stringify({ sync_files: newChannel.sync_files, sync_interval: newChannel.sync_interval }),
+        sync_files: newChannel.sync_files,
+        sync_interval: newChannel.sync_interval
+      }),
     })
     showDialog.value = false
     newChannel.name = ''
