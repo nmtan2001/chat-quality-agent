@@ -186,7 +186,12 @@
     <!-- Edit Channel Dialog -->
     <v-dialog v-model="editDialog" max-width="500">
       <v-card class="pa-6">
-        <v-card-title>Sửa kênh chat</v-card-title>
+        <v-card-title>
+          Sửa kênh chat
+          <v-chip v-if="editForm.channel_type" size="small" class="ml-2" :color="editForm.channel_type === 'guesty' ? 'purple' : editForm.channel_type === 'facebook' ? 'blue' : 'indigo'">
+            {{ editForm.channel_type === 'zalo_oa' ? 'Zalo OA' : editForm.channel_type === 'facebook' ? 'Facebook Messenger' : editForm.channel_type === 'guesty' ? 'Guesty' : editForm.channel_type }}
+          </v-chip>
+        </v-card-title>
         <v-text-field v-model="editForm.name" label="Tên kênh" class="mb-3" />
         <v-switch v-model="editForm.is_active" label="Hoạt động" color="primary" density="compact" class="mb-3" />
         <v-select
@@ -405,7 +410,7 @@ function handleNotificationSaved() {
 const editDialog = ref(false)
 const savingEdit = ref(false)
 const editChannelId = ref('')
-const editForm = reactive({ name: '', is_active: true, sync_files: false, sync_interval: 15 })
+const editForm = reactive({ name: '', is_active: true, sync_files: false, sync_interval: 15, channel_type: '' })
 const syncIntervalOptions = [
   { title: 'Mỗi 1 phút', value: 1 },
   { title: 'Mỗi 5 phút', value: 5 },
@@ -421,6 +426,7 @@ function openEdit(ch: any) {
   editChannelId.value = ch.id
   editForm.name = ch.name
   editForm.is_active = ch.is_active
+  editForm.channel_type = ch.channel_type
   try {
     const meta = JSON.parse(ch.metadata || '{}')
     editForm.sync_files = meta.sync_files || false
