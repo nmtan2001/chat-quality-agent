@@ -19,6 +19,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nmtan2001/chat-quality-agent/api/middleware"
+	"github.com/nmtan2001/chat-quality-agent/channels"
 	"github.com/nmtan2001/chat-quality-agent/config"
 	"github.com/nmtan2001/chat-quality-agent/db"
 	"github.com/nmtan2001/chat-quality-agent/db/models"
@@ -332,7 +333,6 @@ func TestChannelConnection(c *gin.Context) {
 
 	// Guesty uses server-side credentials, test via adapter health check
 	if channel.ChannelType == "guesty" {
-		cfg, _ := config.Load()
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
