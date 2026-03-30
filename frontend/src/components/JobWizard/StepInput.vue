@@ -12,8 +12,8 @@
         </template>
         <v-list-item-title>{{ ch.name }}</v-list-item-title>
         <v-list-item-subtitle>
-          <v-chip size="x-small" :color="ch.channel_type === 'zalo_oa' ? 'blue' : 'indigo'" variant="tonal" class="mr-1">
-            {{ ch.channel_type === 'zalo_oa' ? 'Zalo OA' : 'Facebook' }}
+          <v-chip size="x-small" :color="getChannelColor(ch.channel_type)" variant="tonal" class="mr-1">
+            {{ getChannelLabel(ch.channel_type) }}
           </v-chip>
           <v-chip size="x-small" :color="ch.is_active ? 'success' : 'grey'" variant="tonal">
             {{ ch.is_active ? $t('active') : $t('inactive') }}
@@ -34,6 +34,32 @@ const form = defineModel<Record<string, any>>('form', { required: true })
 const route = useRoute()
 const channelStore = useChannelStore()
 const { channels } = storeToRefs(channelStore)
+
+function getChannelLabel(type: string): string {
+  switch (type) {
+    case 'zalo_oa':
+      return 'Zalo OA'
+    case 'facebook':
+      return 'Facebook'
+    case 'guesty':
+      return 'Guesty'
+    default:
+      return type
+  }
+}
+
+function getChannelColor(type: string): string {
+  switch (type) {
+    case 'zalo_oa':
+      return 'blue'
+    case 'facebook':
+      return 'indigo'
+    case 'guesty':
+      return 'purple'
+    default:
+      return 'grey'
+  }
+}
 
 onMounted(() => {
   const tenantId = route.params.tenantId as string
