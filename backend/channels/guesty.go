@@ -24,8 +24,8 @@ type GuestyCredentials struct {
 
 // GuestyAdapter implements ChannelAdapter for Guesty platform.
 type GuestyAdapter struct {
-	creds     GuestyCredentials
-	client    *guesty.Client
+	creds      GuestyCredentials
+	client     *guesty.Client
 	httpClient *http.Client
 }
 
@@ -97,8 +97,12 @@ func (g *GuestyAdapter) FetchRecentConversations(ctx context.Context, since time
 		listingNickname := ""
 		listingID := ""
 		if res.Listing != nil {
-			listingNickname, _ = res.Listing["nickname"].(string)
-			listingID, _ = res.Listing["id"].(string)
+			if nickname, ok := res.Listing["nickname"].(string); ok {
+				listingNickname = nickname
+			}
+			if id, ok := res.Listing["id"].(string); ok {
+				listingID = id
+			}
 		}
 
 		conversations = append(conversations, SyncedConversation{
@@ -177,7 +181,9 @@ func (g *GuestyAdapter) FetchMessages(ctx context.Context, conversationID string
 			senderType = "agent"
 			senderName = "Host"
 		} else if msg.Sender != nil {
-			senderName, _ = msg.Sender["firstName"].(string)
+			if firstName, ok := msg.Sender["firstName"].(string); ok {
+				senderName = firstName
+			}
 			if senderName == "" {
 				senderName = "Guest"
 			}

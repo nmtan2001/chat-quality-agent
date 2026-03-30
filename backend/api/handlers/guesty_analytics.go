@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -11,13 +12,15 @@ import (
 
 // PropertyIssueStats represents issue statistics for a property.
 type PropertyIssueStats struct {
-	ListingID        string            `json:"listing_id"`
-	ListingName      string            `json:"listing_name"`
-	TotalConversations int             `json:"total_conversations"`
-	IssueCount       int               `json:"issue_count"`
-	Categories       map[string]int    `json:"categories"`
-	LastIssueAt      *time.Time        `json:"last_issue_at"`
+	ListingID          string         `json:"listing_id"`
+	ListingName        string         `json:"listing_name"`
+	TotalConversations int            `json:"total_conversations"`
+	IssueCount         int            `json:"issue_count"`
+	Categories         map[string]int `json:"categories"`
+	LastIssueAt        *time.Time     `json:"last_issue_at"`
 }
+
+const maxAnalyticsRangeDays = 365
 
 // GetPropertyAnalytics returns aggregated issue statistics by property.
 func GetPropertyAnalytics(c *gin.Context) {
@@ -32,17 +35,38 @@ func GetPropertyAnalytics(c *gin.Context) {
 
 	if startDate != "" {
 		start, err = time.Parse("2006-01-02", startDate)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid start_date format, use YYYY-MM-DD"})
+			return
+		}
 	} else {
 		start = time.Now().AddDate(0, -1, 0) // Default: 1 month ago
 	}
 
 	if endDate != "" {
 		end, err = time.Parse("2006-01-02", endDate)
-		if err == nil {
-			end = end.Add(24 * time.Hour) // Include full end date
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid end_date format, use YYYY-MM-DD"})
+			return
 		}
+		end = end.Add(24 * time.Hour) // Include full end date
 	} else {
 		end = time.Now()
+	}
+
+	// Validate date range
+	if end.Before(start) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "end_date must be after or equal to start_date"})
+		return
+	}
+
+	// Enforce maximum date range limit
+	maxDate := start.AddDate(0, 0, maxAnalyticsRangeDays)
+	if end.After(maxDate) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("date range cannot exceed %d days", maxAnalyticsRangeDays),
+		})
+		return
 	}
 
 	// Query conversations with Guesty channel
@@ -61,10 +85,10 @@ func GetPropertyAnalytics(c *gin.Context) {
 
 	// Get conversations with messages in date range
 	type ConversationStats struct {
-		ListingID       string    `json:"listing_id"`
-		ListingName     string    `json:"listing_name"`
-		ConversationCount int      `json:"conversation_count"`
-		LastMessageAt   time.Time `json:"last_message_at"`
+		ListingID         string    `json:"listing_id"`
+		ListingName       string    `json:"listing_name"`
+		ConversationCount int       `json:"conversation_count"`
+		LastMessageAt     time.Time `json:"last_message_at"`
 	}
 
 	var stats []ConversationStats

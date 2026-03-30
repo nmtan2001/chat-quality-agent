@@ -52,8 +52,15 @@ func VerifySvixSignature(payload, signatureHeader, timestamp, secret string) (bo
 }
 
 // VerifySvixTimestamp verifies the timestamp is within tolerance (in seconds).
-// Prevents replay attacks.
+// Prevents replay attacks by rejecting timestamps too far in the past or future.
+// The default tolerance should be 60 seconds for security.
 func VerifySvixTimestamp(timestampStr string, toleranceSeconds int) error {
+	// Enforce maximum tolerance to prevent accepting old timestamps
+	maxTolerance := 60
+	if toleranceSeconds > maxTolerance {
+		toleranceSeconds = maxTolerance
+	}
+
 	timestamp, err := strconv.ParseInt(timestampStr, 10, 64)
 	if err != nil {
 		return fmt.Errorf("invalid timestamp: %w", err)
@@ -62,12 +69,14 @@ func VerifySvixTimestamp(timestampStr string, toleranceSeconds int) error {
 	now := time.Now().Unix()
 	diff := now - timestamp
 
+	// Reject future timestamps - they should not be accepted even within tolerance
 	if diff < 0 {
-		diff = -diff
+		return fmt.Errorf("timestamp is in the future: diff=%d", diff)
 	}
 
+	// Only check for timestamps too old
 	if diff > int64(toleranceSeconds) {
-		return fmt.Errorf("timestamp too old or too new: diff=%d", diff)
+		return fmt.Errorf("timestamp too old: diff=%d seconds", diff)
 	}
 
 	return nil

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -9,22 +10,26 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nmtan2001/chat-quality-agent/ai"
+	"github.com/nmtan2001/chat-quality-agent/api/middleware"
 	"github.com/nmtan2001/chat-quality-agent/db"
 	"github.com/nmtan2001/chat-quality-agent/db/models"
 	"github.com/nmtan2001/chat-quality-agent/pkg"
+	"gorm.io/gorm"
 )
 
 const (
 	guestyAccountIDHeader = "X-Guesty-Account-ID"
 )
 
+var urgentCheckSemaphore = make(chan struct{}, 100)
+
 // GuestyWebhookPayload represents the incoming webhook payload from Guesty.
 type GuestyWebhookPayload struct {
-	Event       string                 `json:"event"`       // e.g., "reservation.messageReceived"
-	Message     map[string]interface{} `json:"message"`
+	Event        string                 `json:"event"` // e.g., "reservation.messageReceived"
+	Message      map[string]interface{} `json:"message"`
 	Conversation map[string]interface{} `json:"conversation"`
-	Reservation map[string]interface{} `json:"reservation"`
-	AccountID   string                 `json:"accountId"` // May be in payload or header
+	Reservation  map[string]interface{} `json:"reservation"`
+	AccountID    string                 `json:"accountId"` // May be in payload or header
 }
 
 // GuestyWebhook handles incoming webhooks from Guesty via Svix.
@@ -37,32 +42,59 @@ func GuestyWebhook(c *gin.Context) {
 		return
 	}
 
-	// Verify Svix signature if configured
+	// Get config from context (injected by middleware)
+	cfg := middleware.GetConfig(c)
+	if cfg == nil {
+		log.Printf("[Guesty Webhook] Config not available in context")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "server configuration error"})
+		return
+	}
+
+	// Verify Svix signature
 	signature := c.GetHeader("svix-signature")
 	timestamp := c.GetHeader("svix-timestamp")
 
-	if signature != "" && timestamp != "" {
-		// Get Svix secret from config or environment
-		svixSecret := c.GetHeader("svix-secret") // Or from config/env
-		if svixSecret == "" {
-			svixSecret = c.GetString("svix_secret")
+	// If svix secret is configured, signature verification is REQUIRED
+	if cfg.SvixSecret != "" {
+		// Require both signature and timestamp when secret is configured
+		if signature == "" || timestamp == "" {
+			log.Printf("[Guesty Webhook] Signature verification required but not provided (svix-secret is configured)")
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":  "signature verification required",
+				"detail": "webhook signature verification is required when SVIX_SECRET is configured",
+			})
+			return
 		}
 
-		if svixSecret != "" {
-			valid, err := pkg.VerifySvixSignature(string(bodyBytes), signature, timestamp, svixSecret)
-			if err != nil || !valid {
-				log.Printf("[Guesty Webhook] Signature verification failed: %v", err)
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid signature"})
-				return
-			}
-
-			// Verify timestamp to prevent replay attacks
-			if err := pkg.VerifySvixTimestamp(timestamp, 300); err != nil {
-				log.Printf("[Guesty Webhook] Timestamp verification failed: %v", err)
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid timestamp"})
-				return
-			}
+		// Verify signature using ONLY the config secret (NEVER from headers)
+		valid, err := pkg.VerifySvixSignature(string(bodyBytes), signature, timestamp, cfg.SvixSecret)
+		if err != nil || !valid {
+			log.Printf("[Guesty Webhook] Signature verification failed: %v", err)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid signature"})
+			return
 		}
+
+		// Verify timestamp to prevent replay attacks
+		if err := pkg.VerifySvixTimestamp(timestamp, 60); err != nil {
+			log.Printf("[Guesty Webhook] Timestamp verification failed: %v", err)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid timestamp"})
+			return
+		}
+
+		log.Printf("[Guesty Webhook] Signature verified successfully")
+	} else {
+		// No svix secret configured
+		if cfg.IsProduction() {
+			// In production, require signature verification
+			log.Printf("[Guesty Webhook] SVIX_SECRET not configured in production - rejecting webhook")
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":  "webhook not configured",
+				"detail": "SVIX_SECRET must be configured in production environment",
+			})
+			return
+		}
+		// In development, allow unsigned webhooks with warning
+		log.Printf("[Guesty Webhook] WARNING: Processing webhook without signature verification (SVIX_SECRET not configured)")
 	}
 
 	var payload GuestyWebhookPayload
@@ -125,22 +157,17 @@ func processMessageWebhook(payload GuestyWebhookPayload, accountID string) error
 	var channel models.Channel
 	if err := db.DB.Where("channel_type = ? AND metadata->>'account_id' = ?", "guesty", accountID).First(&channel).Error; err != nil {
 		log.Printf("[Guesty Webhook] No channel found for account %s: %v", accountID, err)
-		// Still continue to process, but without tenant association
+		return fmt.Errorf("channel not found for account_id: %s: %w", accountID, err)
 	}
 
-	// Only proceed if we found a channel
-	if channel.ID == "" {
-		return fmt.Errorf("channel not found for account_id: %s", accountID)
-	}
+	// Capture values for goroutine before transaction
+	var conversationIDForCheck string
+	tenantIDForCheck := channel.TenantID
 
-	// Persist conversation if not exists
-	var conversation models.Conversation
-	convResult := db.DB.Where("tenant_id = ? AND external_conversation_id = ?", channel.TenantID, conversationID).
-		First(&conversation)
-
-	if convResult.Error != nil {
-		conversation = models.Conversation{
-			ID:                     pkg.NewUUID(),
+	// Execute all database operations in a single transaction
+	err := db.DB.Transaction(func(tx *gorm.DB) error {
+		// Find or create conversation atomically to prevent race condition
+		conversation := models.Conversation{
 			TenantID:               channel.TenantID,
 			ChannelID:              channel.ID,
 			ExternalConversationID: conversationID,
@@ -148,43 +175,83 @@ func processMessageWebhook(payload GuestyWebhookPayload, accountID string) error
 			CustomerName:           guestName,
 			Metadata:               mustMarshalJSON(map[string]interface{}{"reservation_id": reservationID, "listing_name": listingName}),
 		}
-		db.DB.Create(&conversation)
-	}
+		if err := tx.Where("tenant_id = ? AND external_conversation_id = ?", channel.TenantID, conversationID).
+			FirstOrCreate(&conversation).Error; err != nil {
+			return fmt.Errorf("find/create conversation: %w", err)
+		}
 
-	// Persist message
-	message := models.Message{
-		ID:                pkg.NewUUID(),
-		TenantID:          channel.TenantID,
-		ConversationID:    conversation.ID,
-		ExternalMessageID: messageID,
-		SenderType:        senderType,
-		SenderName:        guestName,
-		Content:           messageBody,
-		ContentType:       "text",
-		SentAt:            time.Now(),
-	}
-	db.DB.Create(&message)
+		// Save conversation ID for urgent check goroutine
+		conversationIDForCheck = conversation.ID
 
-	// Update conversation last message time
-	now := time.Now()
-	db.DB.Model(&conversation).Updates(map[string]interface{}{
-		"last_message_at": &now,
-		"message_count":   conversation.MessageCount + 1,
+		// Create message with proper error checking
+		message := models.Message{
+			ID:                pkg.NewUUID(),
+			TenantID:          channel.TenantID,
+			ConversationID:    conversation.ID,
+			ExternalMessageID: messageID,
+			SenderType:        senderType,
+			SenderName:        guestName,
+			Content:           messageBody,
+			ContentType:       "text",
+			SentAt:            time.Now(),
+		}
+		if err := tx.Create(&message).Error; err != nil {
+			return fmt.Errorf("create message: %w", err)
+		}
+
+		// Update conversation with proper error checking
+		now := time.Now()
+		if err := tx.Model(&conversation).Updates(map[string]interface{}{
+			"last_message_at": &now,
+			"message_count":   conversation.MessageCount + 1,
+		}).Error; err != nil {
+			return fmt.Errorf("update conversation: %w", err)
+		}
+
+		return nil
 	})
 
-	// Check for urgent issues (only for customer messages)
-	if senderType == "customer" && channel.TenantID != "" {
-		go checkUrgentIssue(channel.TenantID, conversation.ID, guestName, messageBody, listingName, reservationID)
+	if err != nil {
+		return fmt.Errorf("transaction failed: %w", err)
+	}
+
+	// Launch goroutine AFTER successful transaction commit with captured values
+	if senderType == "customer" {
+		// Capture variables by value to avoid race conditions
+		guest := guestName
+		msg := messageBody
+		listing := listingName
+		resID := reservationID
+
+		// Try to acquire semaphore slot, skip if queue is full
+		select {
+		case urgentCheckSemaphore <- struct{}{}:
+			go func() {
+				defer func() {
+					if r := recover(); r != nil {
+						log.Printf("[Urgent Check] Panic recovered: %v", r)
+					}
+					<-urgentCheckSemaphore
+				}()
+
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
+
+				checkUrgentIssue(ctx, tenantIDForCheck, conversationIDForCheck, guest, msg, listing, resID)
+			}()
+		default:
+			log.Printf("[Urgent Check] Semaphore queue full, skipping urgent check for conversation %s", conversationIDForCheck)
+		}
 	}
 
 	return nil
 }
 
 // checkUrgentIssue uses AI to detect urgent issues in customer messages.
-func checkUrgentIssue(tenantID, conversationID, guestName, message, listingName, reservationID string) {
+func checkUrgentIssue(ctx context.Context, tenantID, conversationID, guestName, message, listingName, reservationID string) {
 	// Get AI provider from tenant settings
 	var setting models.Setting
-	if err := db.DB.Where("tenant_id = ? AND key = ?", tenantID, "ai").First(&setting).Error; err != nil {
+	if err := db.DB.WithContext(ctx).Where("tenant_id = ? AND key = ?", tenantID, "ai").First(&setting).Error; err != nil {
 		log.Printf("[Urgent Check] No AI settings for tenant %s: %v", tenantID, err)
 		return
 	}
@@ -217,8 +284,8 @@ func checkUrgentIssue(tenantID, conversationID, guestName, message, listingName,
 		return
 	}
 
-	// Build urgency detection prompt
-	prompt := buildUrgencyDetectionPrompt()
+	// Build urgency detection prompt (using centralized enhanced version)
+	prompt := ai.BuildUrgencyDetectionPrompt()
 
 	// Analyze message
 	response, err := provider.AnalyzeChat(nil, prompt, message)
@@ -227,74 +294,52 @@ func checkUrgentIssue(tenantID, conversationID, guestName, message, listingName,
 		return
 	}
 
-	// Parse response
+	// Parse response using enhanced parsing with retry
 	var result struct {
-		IsUrgent bool   `json:"is_urgent"`
-		Category string `json:"category"`
-		Severity string `json:"severity"`
-		Summary  string `json:"summary"`
+		IsUrgent   bool    `json:"is_urgent"`
+		Category   string  `json:"category"`
+		Severity   string  `json:"severity"`
+		Confidence float64 `json:"confidence"`
+		Summary    string  `json:"summary"`
 	}
 
-	if err := json.Unmarshal([]byte(response.Content), &result); err != nil {
+	if err := ai.ParseAIResponseWithRetry(response.Content, &result); err != nil {
 		log.Printf("[Urgent Check] Failed to parse AI response: %v", err)
 		return
 	}
 
-	if result.IsUrgent {
-		log.Printf("[Urgent Check] Urgent issue detected: %s - %s", result.Category, result.Summary)
+	// Filter by confidence threshold to reduce false positives
+	if result.IsUrgent && result.Confidence < 0.5 {
+		log.Printf("[Urgent Check] Low confidence urgency (%.2f), skipping", result.Confidence)
+		return
+	}
 
-		// Create notification log
+	if result.IsUrgent {
+		log.Printf("[Urgent Check] Urgent issue detected: %s - %s (confidence: %.2f)", result.Category, result.Summary, result.Confidence)
+
+		// Create notification log with confidence tracking
 		notification := models.NotificationLog{
-			ID:        pkg.NewUUID(),
-			TenantID:  tenantID,
-			Subject:   fmt.Sprintf("[URGENT] %s issue at %s", result.Category, listingName),
-			Body: fmt.Sprintf("Guest: %s\nListing: %s\nReservation: %s\nIssue: %s\n\nMessage: %s",
-				guestName, listingName, reservationID, result.Summary, message),
+			ID:       pkg.NewUUID(),
+			TenantID: tenantID,
+			Subject:  fmt.Sprintf("[URGENT] %s issue at %s", result.Category, listingName),
+			Body: fmt.Sprintf("Guest: %s\nListing: %s\nReservation: %s\nIssue: %s\nSeverity: %s\nConfidence: %.2f\n\nMessage: %s",
+				guestName, listingName, reservationID, result.Summary, result.Severity, result.Confidence, message),
 			Status:    "pending",
 			SentAt:    time.Now(),
 			CreatedAt: time.Now(),
 		}
-		db.DB.Create(&notification)
+		db.DB.WithContext(ctx).Create(&notification)
 
 		// TODO: Send instant alert via configured channels (Telegram/Email)
 		// This uses the existing notification dispatcher
 	}
 }
 
-// BuildUrgencyDetectionPrompt creates a prompt for detecting urgent issues.
-func BuildUrgencyDetectionPrompt() string {
-	return `You are an urgent issue detection system for vacation rental properties.
-
-Analyze the guest message and determine if it reports an urgent issue that requires immediate attention.
-
-Urgent categories:
-1. CLEANING: Dirty rooms, bathroom issues, pests, trash, linen problems
-2. MAINTENANCE: No hot water, AC/heat not working, leaks, broken appliances, power outages
-3. PAYMENT: Guest refuses to pay, payment disputes, extra charges
-4. SERVICE_REQUEST: Guest asks for special services (early check-in, late check-out, extra amenities)
-5. SECURITY: Locks not working, safety concerns, unauthorized access
-6. NOISE: Noise complaints from neighbors or construction
-7. OTHER: Issues requiring immediate attention
-
-Return JSON:
-{
-  "is_urgent": true/false,
-  "category": "CLEANING|MAINTENANCE|PAYMENT|SERVICE_REQUEST|SECURITY|NOISE|OTHER",
-  "severity": "high|medium|low",
-  "summary": "Brief description of the issue (1 sentence)"
-}
-
-Consider as urgent if:
-- Guest reports something broken, dirty, or not working
-- Guest mentions refusing to pay or payment issues
-- Guest requests immediate action or special service
-- Guest expresses strong frustration or threat to leave bad review
-
-ONLY return JSON, no additional text.`
-}
-
 func mustMarshalJSON(v interface{}) string {
-	b, _ := json.Marshal(v)
+	b, err := json.Marshal(v)
+	if err != nil {
+		log.Panicf("[Guesty Webhook] Failed to marshal JSON: %v", err)
+	}
 	return string(b)
 }
 

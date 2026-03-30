@@ -1,6 +1,7 @@
 package guesty
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -123,19 +124,29 @@ func (c *Client) refreshToken(ctx context.Context) (string, error) {
 
 // Do performs an authenticated API request with automatic retry on token expiry
 func (c *Client) Do(ctx context.Context, method, url string, body io.Reader) (*http.Response, error) {
+	// Read body into memory to enable retries
+	var bodyBytes []byte
+	if body != nil {
+		var err error
+		bodyBytes, err = io.ReadAll(body)
+		if err != nil {
+			return nil, fmt.Errorf("read request body: %w", err)
+		}
+	}
+
 	token, err := c.GetToken(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, url, body)
+	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(bodyBytes))
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Accept", "application/json")
-	if body != nil {
+	if bodyBytes != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
 
@@ -160,14 +171,15 @@ func (c *Client) Do(ctx context.Context, method, url string, body io.Reader) (*h
 			return nil, err
 		}
 
-		req, err = http.NewRequestWithContext(ctx, method, url, body)
+		// Reuse bodyBytes for retry - this is safe since bytes.NewReader can be used multiple times
+		req, err = http.NewRequestWithContext(ctx, method, url, bytes.NewReader(bodyBytes))
 		if err != nil {
 			return nil, fmt.Errorf("create retry request: %w", err)
 		}
 
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Accept", "application/json")
-		if body != nil {
+		if bodyBytes != nil {
 			req.Header.Set("Content-Type", "application/json")
 		}
 

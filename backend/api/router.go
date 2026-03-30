@@ -21,6 +21,9 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 
+	// Inject config into all requests
+	r.Use(middleware.ConfigInjector(cfg))
+
 	// Serve static frontend files in production
 	if cfg.IsProduction() {
 		r.Static("/assets", "./static/assets")
