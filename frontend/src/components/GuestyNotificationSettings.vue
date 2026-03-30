@@ -126,7 +126,7 @@
       <template v-if="form.use_custom_template">
         <v-alert type="info" variant="tonal" density="compact" class="mb-3">
           <div><strong>Biến sẵn có:</strong></div>
-          <div class="mt-2">
+          <div class="mt-2" v-pre>
             <code>{{category}}</code> - Loại vấn đề<br>
             <code>{{listing_name}}</code> - Tên căn hộ<br>
             <code>{{guest_name}}</code> - Tên khách<br>
