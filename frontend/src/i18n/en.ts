@@ -57,6 +57,7 @@ export default {
   channel_type: 'Channel Type',
   channel_zalo: 'Zalo OA',
   channel_facebook: 'Facebook Fanpage',
+  channel_guesty: 'Guesty',
   last_sync: 'Last Synced',
   sync_status: 'Sync Status',
   test_connection: 'Test Connection',
