@@ -163,7 +163,6 @@ func UpdateGuestyNotificationSettings(c *gin.Context) {
 	if req.EmailEnabled && req.EmailConfig != nil {
 		smtpHost, _ := req.EmailConfig["smtp_host"].(string)
 		smtpPort, _ := req.EmailConfig["smtp_port"].(float64)
-		smtpUser, _ := req.EmailConfig["smtp_user"].(string)
 		from, _ := req.EmailConfig["from"].(string)
 		to, _ := req.EmailConfig["to"].(string)
 
@@ -222,7 +221,7 @@ func UpdateGuestyNotificationSettings(c *gin.Context) {
 
 	// Update or create settings
 	var settings models.GuestyNotificationSetting
-	err = db.DB.Where("tenant_id = ? AND channel_id = ?", tenantID, channelID).
+	err := db.DB.Where("tenant_id = ? AND channel_id = ?", tenantID, channelID).
 		First(&settings).Error
 
 	now := time.Now()

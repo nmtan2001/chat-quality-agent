@@ -84,14 +84,14 @@ func ListConversations(c *gin.Context) {
 	}
 
 	type ConvResponse struct {
-		ID             string  `json:"id"`
-		ChannelID      string  `json:"channel_id"`
-		ChannelName    string  `json:"channel_name"`
-		ChannelType    string  `json:"channel_type"`
-		CustomerName   string  `json:"customer_name"`
-		LastMessageAt  *string `json:"last_message_at"`
-		MessageCount   int     `json:"message_count"`
-		CreatedAt      string  `json:"created_at"`
+		ID            string  `json:"id"`
+		ChannelID     string  `json:"channel_id"`
+		ChannelName   string  `json:"channel_name"`
+		ChannelType   string  `json:"channel_type"`
+		CustomerName  string  `json:"customer_name"`
+		LastMessageAt *string `json:"last_message_at"`
+		MessageCount  int     `json:"message_count"`
+		CreatedAt     string  `json:"created_at"`
 	}
 
 	results := make([]ConvResponse, len(conversations))

@@ -69,7 +69,7 @@ func (d *Dispatcher) SendJobResults(ctx context.Context, job models.Job, run mod
 	subject := fmt.Sprintf("[CQA] %s - %d issues found", job.Name, issues)
 
 	for _, output := range outputs {
-		notifier, err := d.createNotifier(output)
+		notifier, err := CreateNotifier(output)
 		if err != nil {
 			log.Printf("[dispatcher] create notifier failed for %s: %v", output.Type, err)
 			continue
@@ -130,21 +130,6 @@ func (d *Dispatcher) SendJobResults(ctx context.Context, job models.Job, run mod
 		Update("notified_at", &now)
 
 	return nil
-}
-
-func (d *Dispatcher) createNotifier(cfg OutputConfig) (Notifier, error) {
-	switch cfg.Type {
-	case "telegram":
-		return NewTelegramNotifier(cfg.BotToken, cfg.ChatID), nil
-	case "email":
-		return NewEmailNotifier(
-			cfg.SMTPHost, cfg.SMTPPort,
-			cfg.SMTPUser, cfg.SMTPPass,
-			cfg.From, splitComma(cfg.To),
-		), nil
-	default:
-		return nil, fmt.Errorf("unsupported output type: %s", cfg.Type)
-	}
 }
 
 func (d *Dispatcher) buildNotificationBody(job models.Job, results []models.JobResult, outputType string) string {

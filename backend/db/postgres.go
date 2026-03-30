@@ -67,7 +67,7 @@ func AutoMigrate() error {
 	addUniqueConstraints()
 
 	// Run Guesty-specific migrations
-	if err := migrations.CreateGuestyNotificationSettingsTable(); err != nil {
+	if err := migrations.CreateGuestyNotificationSettingsTable(DB); err != nil {
 		log.Printf("[Migration] Guesty notification settings migration warning: %v", err)
 	}
 

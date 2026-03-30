@@ -105,7 +105,7 @@ func ImportDemoData(c *gin.Context) {
 		{
 			ID: qcJobID, TenantID: tenantID, Name: "Đánh giá chất lượng CSKH",
 			Description: "Tự động đánh giá chất lượng hỗ trợ khách hàng qua chat dựa trên bộ quy tắc",
-			JobType: "qc_analysis", InputChannelIDs: string(inputChannelIDs),
+			JobType:     "qc_analysis", InputChannelIDs: string(inputChannelIDs),
 			RulesContent: rulesContent, RulesConfig: "[]", SkipConditions: skipConditions,
 			AIProvider: "claude", AIModel: "claude-sonnet-4-6",
 			Outputs: "[]", OutputSchedule: "none",
@@ -116,9 +116,9 @@ func ImportDemoData(c *gin.Context) {
 		{
 			ID: classJobID, TenantID: tenantID, Name: "Phân loại phản hồi khách hàng",
 			Description: "Tự động phân loại cuộc chat theo nhãn: hỏi menu, khiếu nại, góp ý, hỗ trợ",
-			JobType: "classification", InputChannelIDs: string(inputChannelIDs),
+			JobType:     "classification", InputChannelIDs: string(inputChannelIDs),
 			RulesConfig: rulesConfig,
-			AIProvider: "claude", AIModel: "claude-sonnet-4-6",
+			AIProvider:  "claude", AIModel: "claude-sonnet-4-6",
 			Outputs: "[]", OutputSchedule: "none",
 			ScheduleType: "manual", IsActive: true,
 			LastRunAt: &now, LastRunStatus: "success",
@@ -150,10 +150,10 @@ func ImportDemoData(c *gin.Context) {
 			sender  string // customer / agent
 			content string
 		}
-		qcVerdict    string
-		qcReview     string
-		violations   []struct{ rule, evidence, severity string }
-		classTags    []string
+		qcVerdict     string
+		qcReview      string
+		violations    []struct{ rule, evidence, severity string }
+		classTags     []string
 		classEvidence []string
 	}
 
@@ -204,7 +204,7 @@ func ImportDemoData(c *gin.Context) {
 				m := models.Message{
 					ID: pkg.NewUUID(), TenantID: tenantID, ConversationID: convID,
 					ExternalMessageID: fmt.Sprintf("demo-msg-%d-%d", convCount, j),
-					SenderType: senderType, SenderName: senderName,
+					SenderType:        senderType, SenderName: senderName,
 					Content: msg.content, ContentType: "text", Attachments: "[]", RawData: "{}",
 					SentAt: msgTime, CreatedAt: msgTime,
 				}
@@ -237,7 +237,7 @@ func ImportDemoData(c *gin.Context) {
 					ID: pkg.NewUUID(), TenantID: tenantID, JobID: qcJobID, JobRunID: qcRunID,
 					Provider: "claude", Model: "claude-sonnet-4-6",
 					InputTokens: 1800 + rng.Intn(600), OutputTokens: 600 + rng.Intn(400),
-					CostUSD: 0.012 + float64(rng.Intn(8))*0.001,
+					CostUSD:   0.012 + float64(rng.Intn(8))*0.001,
 					CreatedAt: evalTime,
 				})
 			}
@@ -276,7 +276,7 @@ func ImportDemoData(c *gin.Context) {
 					ID: pkg.NewUUID(), TenantID: tenantID, JobID: classJobID, JobRunID: classRunID,
 					Provider: "claude", Model: "claude-sonnet-4-6",
 					InputTokens: 1500 + rng.Intn(500), OutputTokens: 400 + rng.Intn(300),
-					CostUSD: 0.008 + float64(rng.Intn(6))*0.001,
+					CostUSD:   0.008 + float64(rng.Intn(6))*0.001,
 					CreatedAt: evalTime.Add(time.Minute),
 				})
 			}

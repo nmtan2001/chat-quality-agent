@@ -3,11 +3,11 @@ package migrations
 import (
 	"log"
 
-	"github.com/nmtan2001/chat-quality-agent/db"
+	"gorm.io/gorm"
 )
 
 // CreateGuestyNotificationSettingsTable creates the guesty_notification_settings table
-func CreateGuestyNotificationSettingsTable() error {
+func CreateGuestyNotificationSettingsTable(db *gorm.DB) error {
 	sql := `
 	CREATE TABLE IF NOT EXISTS guesty_notification_settings (
 		id CHAR(36) PRIMARY KEY,
@@ -27,7 +27,7 @@ func CreateGuestyNotificationSettingsTable() error {
 	);
 	`
 
-	if err := db.DB.Exec(sql).Error; err != nil {
+	if err := db.Exec(sql).Error; err != nil {
 		log.Printf("[Migration] Failed to create guesty_notification_settings table: %v", err)
 		return err
 	}
@@ -37,10 +37,10 @@ func CreateGuestyNotificationSettingsTable() error {
 }
 
 // DropGuestyNotificationSettingsTable drops the guesty_notification_settings table
-func DropGuestyNotificationSettingsTable() error {
+func DropGuestyNotificationSettingsTable(db *gorm.DB) error {
 	sql := `DROP TABLE IF EXISTS guesty_notification_settings;`
 
-	if err := db.DB.Exec(sql).Error; err != nil {
+	if err := db.Exec(sql).Error; err != nil {
 		log.Printf("[Migration] Failed to drop guesty_notification_settings table: %v", err)
 		return err
 	}

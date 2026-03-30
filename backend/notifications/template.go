@@ -71,7 +71,6 @@ func sanitizeHTML(input string) string {
 	var buf bytes.Buffer
 	var tagBuf bytes.Buffer
 	inTag := false
-	escapeNext := false
 
 	for _, r := range input {
 		switch {

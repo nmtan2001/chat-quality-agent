@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/xuri/excelize/v2"
 	"github.com/nmtan2001/chat-quality-agent/api/middleware"
 	"github.com/nmtan2001/chat-quality-agent/config"
 	"github.com/nmtan2001/chat-quality-agent/db"
@@ -19,6 +18,7 @@ import (
 	"github.com/nmtan2001/chat-quality-agent/engine"
 	"github.com/nmtan2001/chat-quality-agent/notifications"
 	"github.com/nmtan2001/chat-quality-agent/pkg"
+	"github.com/xuri/excelize/v2"
 )
 
 type CreateJobRequest struct {

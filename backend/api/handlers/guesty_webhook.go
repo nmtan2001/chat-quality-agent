@@ -164,6 +164,7 @@ func processMessageWebhook(payload GuestyWebhookPayload, accountID string) error
 	// Capture values for goroutine before transaction
 	var conversationIDForCheck string
 	tenantIDForCheck := channel.TenantID
+	channelIDForCheck := channel.ID
 
 	// Execute all database operations in a single transaction
 	err := db.DB.Transaction(func(tx *gorm.DB) error {
@@ -223,6 +224,7 @@ func processMessageWebhook(payload GuestyWebhookPayload, accountID string) error
 		msg := messageBody
 		listing := listingName
 		resID := reservationID
+		chID := channelIDForCheck
 
 		// Try to acquire semaphore slot, skip if queue is full
 		select {
@@ -238,7 +240,7 @@ func processMessageWebhook(payload GuestyWebhookPayload, accountID string) error
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
 
-				checkUrgentIssue(ctx, tenantIDForCheck, conversationIDForCheck, guest, msg, listing, resID)
+				checkUrgentIssue(ctx, tenantIDForCheck, chID, conversationIDForCheck, guest, msg, listing, resID)
 			}()
 		default:
 			log.Printf("[Urgent Check] Semaphore queue full, skipping urgent check for conversation %s", conversationIDForCheck)
@@ -249,7 +251,7 @@ func processMessageWebhook(payload GuestyWebhookPayload, accountID string) error
 }
 
 // checkUrgentIssue uses AI to detect urgent issues in customer messages.
-func checkUrgentIssue(ctx context.Context, tenantID, conversationID, guestName, message, listingName, reservationID string) {
+func checkUrgentIssue(ctx context.Context, tenantID, channelID, conversationID, guestName, message, listingName, reservationID string) {
 	// Get AI provider from tenant settings
 	var setting models.AppSetting
 	if err := db.DB.WithContext(ctx).Where("tenant_id = ? AND key = ?", tenantID, "ai").First(&setting).Error; err != nil {
@@ -262,7 +264,7 @@ func checkUrgentIssue(ctx context.Context, tenantID, conversationID, guestName, 
 		APIKey   string `json:"api_key"`
 		Model    string `json:"model"`
 	}
-	if err := json.Unmarshal([]byte(setting.Value), &aiConfig); err != nil {
+	if err := json.Unmarshal([]byte(setting.ValuePlain), &aiConfig); err != nil {
 		log.Printf("[Urgent Check] Invalid AI config: %v", err)
 		return
 	}
@@ -327,7 +329,7 @@ func checkUrgentIssue(ctx context.Context, tenantID, conversationID, guestName, 
 
 			urgentDetails := notifications.UrgentIssueDetails{
 				TenantID:       tenantID,
-				ChannelID:      channel.ID,
+				ChannelID:      channelID,
 				GuestName:      guestName,
 				ListingName:    listingName,
 				ReservationID:  reservationID,
@@ -341,7 +343,7 @@ func checkUrgentIssue(ctx context.Context, tenantID, conversationID, guestName, 
 			if err := notifications.SendGuestyAlert(alertCtx, urgentDetails); err != nil {
 				log.Printf("[Guesty Alert] Failed to send urgent alert: %v", err)
 			} else {
-				log.Printf("[Guesty Alert] Urgent alert sent successfully for channel %s", channel.ID)
+				log.Printf("[Guesty Alert] Urgent alert sent successfully for channel %s", channelID)
 			}
 		}()
 	}

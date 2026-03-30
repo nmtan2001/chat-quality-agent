@@ -91,7 +91,7 @@ func SendGuestyAlert(ctx context.Context, details UrgentIssueDetails) error {
 
 	// Send to each output and log
 	for _, output := range outputs {
-		notifier, err := createNotifier(output)
+		notifier, err := CreateNotifier(output)
 		if err != nil {
 			log.Printf("[Guesty Alert] Failed to create notifier for %s: %v", output.Type, err)
 			continue

@@ -3,11 +3,11 @@ package migrations
 import (
 	"log"
 
-	"github.com/nmtan2001/chat-quality-agent/db"
+	"gorm.io/gorm"
 )
 
 // AddJSONBIndexesForGuesty adds indexes for JSONB fields used by Guesty (PostgreSQL).
-func AddJSONBIndexesForGuesty() error {
+func AddJSONBIndexesForGuesty(db *gorm.DB) error {
 	// PostgreSQL GIN indexes for JSONB
 	indexes := []string{
 		`CREATE INDEX IF NOT EXISTS idx_channels_metadata_account_id
@@ -21,7 +21,7 @@ func AddJSONBIndexesForGuesty() error {
 	}
 
 	for _, idx := range indexes {
-		if err := db.DB.Exec(idx).Error; err != nil {
+		if err := db.Exec(idx).Error; err != nil {
 			log.Printf("[Migration] Failed to create index: %v, SQL: %s", err, idx)
 		}
 	}
@@ -31,7 +31,7 @@ func AddJSONBIndexesForGuesty() error {
 }
 
 // DropJSONBIndexesForGuesty removes the Guesty-specific indexes (PostgreSQL).
-func DropJSONBIndexesForGuesty() error {
+func DropJSONBIndexesForGuesty(db *gorm.DB) error {
 	dropIndexes := []string{
 		`DROP INDEX IF EXISTS idx_channels_metadata_account_id`,
 		`DROP INDEX IF EXISTS idx_conversations_metadata_listing_id`,
@@ -40,7 +40,7 @@ func DropJSONBIndexesForGuesty() error {
 	}
 
 	for _, idx := range dropIndexes {
-		if err := db.DB.Exec(idx).Error; err != nil {
+		if err := db.Exec(idx).Error; err != nil {
 			log.Printf("[Migration] Failed to drop index: %v", err)
 		}
 	}

@@ -61,6 +61,6 @@ func ListCostLogs(c *gin.Context) {
 		"total":         total,
 		"page":          page,
 		"per_page":      perPage,
-		"exchange_rate":  exchangeRate,
+		"exchange_rate": exchangeRate,
 	})
 }

@@ -153,10 +153,10 @@ func TestAIKey(c *gin.Context) {
 func SaveGeneralSettings(c *gin.Context) {
 	tenantID := middleware.GetTenantID(c)
 	var req struct {
-		CompanyName    string  `json:"company_name"`
-		Timezone       string  `json:"timezone"`
-		Language       string  `json:"language"`
-		ExchangeRate   float64 `json:"exchange_rate_vnd"`
+		CompanyName  string  `json:"company_name"`
+		Timezone     string  `json:"timezone"`
+		Language     string  `json:"language"`
+		ExchangeRate float64 `json:"exchange_rate_vnd"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "details": err.Error()})
@@ -284,7 +284,7 @@ func upsertSetting(tenantID, key, plainValue string, encryptedValue []byte) {
 		setting := models.AppSetting{
 			ID:             pkg.NewUUID(),
 			TenantID:       tenantID,
-			SettingKey:      key,
+			SettingKey:     key,
 			ValuePlain:     plainValue,
 			ValueEncrypted: encryptedValue,
 			CreatedAt:      time.Now(),
