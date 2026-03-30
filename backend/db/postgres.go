@@ -3,12 +3,10 @@ package db
 import (
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/nmtan2001/chat-quality-agent/db/models"
 	_ "github.com/lib/pq"
 	"gorm.io/driver/postgres"
-	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -21,30 +19,7 @@ func Connect(dsn string, isProduction bool) error {
 		logLevel = logger.Warn
 	}
 
-	var err error
-	var dialector gorm.Dialector
-
-	// Detect database type from DSN or environment
-	dbType := os.Getenv("DB_TYPE")
-	if dbType == "" {
-		// Auto-detect from DSN format
-		if len(dsn) > 8 && dsn[:8] == "postgres:" {
-			dbType = "postgres"
-		} else {
-			dbType = "mysql"
-		}
-	}
-
-	switch dbType {
-	case "postgres":
-		dialector = postgres.Open(dsn)
-	case "mysql":
-		dialector = mysql.Open(dsn)
-	default:
-		dialector = mysql.Open(dsn)
-	}
-
-	DB, err = gorm.Open(dialector, &gorm.Config{
+	DB, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logLevel),
 	})
 	if err != nil {
@@ -94,44 +69,25 @@ func AutoMigrate() error {
 }
 
 func addUniqueConstraints() {
-	// Detect database type
-	dbType := os.Getenv("DB_TYPE")
-	if dbType == "" {
-		// Auto-detect from DSN format
-		dsn, _ := DB.DB()
-		if dsn != nil {
-			// Try to detect from driver name
-			dbType = "mysql" // default
-		}
-	}
-
 	for _, c := range getUniqueConstraints() {
-		var sql string
-		if dbType == "postgres" {
-			sql = fmt.Sprintf(
-				"ALTER TABLE \"%s\" ADD CONSTRAINT \"%s\" UNIQUE (%s)",
-				c.table, c.name, c.columns,
-			)
-		} else {
-			sql = fmt.Sprintf(
-				"ALTER TABLE `%s` ADD UNIQUE INDEX `%s` (%s)",
-				c.table, c.name, c.columns,
-			)
-		}
+		sql := fmt.Sprintf(
+			"ALTER TABLE \"%s\" ADD CONSTRAINT \"%s\" UNIQUE (%s)",
+			c.table, c.name, c.columns,
+		)
 		// Ignore errors if constraint already exists
 		DB.Exec(sql)
 	}
 }
 
 func getUniqueConstraints() []struct {
-	table      string
-	name       string
-	columns    string
+	table   string
+	name    string
+	columns string
 } {
 	return []struct {
-		table      string
-		name       string
-		columns    string
+		table   string
+		name    string
+		columns string
 	}{
 		{"channels", "uq_channel_tenant_type_ext", "tenant_id, channel_type, external_id"},
 		{"conversations", "uq_conv_tenant_channel_ext", "tenant_id, channel_id, external_conversation_id"},

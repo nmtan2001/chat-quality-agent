@@ -64,7 +64,7 @@ SSL sẽ tự động tạo và gia hạn qua Let's Encrypt.
 |-----------|-----------|
 | Backend | Go 1.25+ / Gin |
 | Frontend | Vue 3 + Vuetify 4 + Vite |
-| Database | PostgreSQL 15+ / MySQL 8.0 |
+| Database | PostgreSQL 15+ |
 | AI | Claude (Anthropic) / Gemini (Google) |
 | Reverse Proxy | Nginx + Let's Encrypt (Lego) |
 | Deploy | Docker Compose |
@@ -83,7 +83,7 @@ SSL sẽ tự động tạo và gia hạn qua Let's Encrypt.
                     └──────┬───────┘
                            │
                     ┌──────┴───────┐
-                    │   PostgreSQL  │ Port 5432 (internal) │ / MySQL 8.0 │ Port 3306 │
+                    │   PostgreSQL  │ Port 5432 (internal)
                     └──────────────┘
 ```
 
@@ -121,7 +121,6 @@ chat-quality-agent/
 | Biến | Mô tả | Bắt buộc |
 |------|-------|----------|
 | `DB_PASSWORD` | Mật khẩu database | Có |
-| `DB_TYPE` | Loại database (postgres/mysql) | Không (default: postgres) |
 | `JWT_SECRET` | Secret cho JWT tokens (min 32 ký tự) | Có |
 | `ENCRYPTION_KEY` | Key 32 bytes cho AES-256-GCM | Có |
 | `LEGO_DOMAIN` | Domain cho SSL tự động | Không |

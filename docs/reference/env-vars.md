@@ -23,9 +23,8 @@ Danh sách đầy đủ các biến môi trường trong file `.env`.
 
 | Biến | Mô tả | Mặc định |
 |------|-------|----------|
-| `DB_TYPE` | Loại database (postgres/mysql) | `postgres` |
 | `DB_HOST` | Database host | `db` |
-| `DB_PORT` | Database port (5432 cho PostgreSQL, 3306 cho MySQL) | `5432` |
+| `DB_PORT` | Database port | `5432` |
 | `DB_USER` | Database username | `cqa` |
 | `DB_PASSWORD` | Database password | |
 | `DB_NAME` | Tên database | `cqa` |

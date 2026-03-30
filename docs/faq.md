@@ -31,7 +31,7 @@ Do giới hạn API của Zalo. Zalo chỉ cho phép ứng dụng bên thứ 3 �
 ### CQA cần bao nhiêu tài nguyên?
 
 - **App**: ~100MB RAM
-- **PostgreSQL**: ~400MB RAM / **MySQL**: ~500MB RAM
+- **PostgreSQL**: ~400MB RAM
 - **Nginx**: ~50MB RAM
 - **Disk**: Tùy số lượng tin nhắn, thường dưới 5GB cho 100K cuộc chat
 - **Tổng**: VPS 1GB RAM + 10GB disk là đủ dùng

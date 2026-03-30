@@ -109,7 +109,7 @@ func CreateTenant(c *gin.Context) {
 		UserID:      userID,
 		TenantID:    tenant.ID,
 		Role:        "owner",
-		Permissions: "{}", // Default empty JSON object for PostgreSQL jsonb compatibility
+		Permissions: "{}", // Default empty JSON object for JSONB compatibility
 	}
 	db.DB.Create(&ut)
 

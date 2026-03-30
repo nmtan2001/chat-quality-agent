@@ -31,7 +31,7 @@ func (UserTenant) TableName() string {
 	return "user_tenants"
 }
 
-// BeforeCreate hook to ensure JSON fields have valid values for PostgreSQL jsonb
+// BeforeCreate hook to ensure JSON fields have valid values for JSONB
 func (ut *UserTenant) BeforeCreate(tx *gorm.DB) error {
 	if ut.Permissions == "" {
 		ut.Permissions = "{}"

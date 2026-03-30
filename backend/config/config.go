@@ -45,7 +45,7 @@ func Load() (*Config, error) {
 		ServerPort:       getEnv("SERVER_PORT", "8080"),
 		ServerHost:       getEnv("SERVER_HOST", "127.0.0.1"),
 		DBHost:           getEnv("DB_HOST", "localhost"),
-		DBPort:           getEnv("DB_PORT", "3306"),
+		DBPort:           getEnv("DB_PORT", "5432"),
 		DBUser:           getEnv("DB_USER", "cqa"),
 		DBPassword:       getEnv("DB_PASSWORD", ""),
 		DBName:           getEnv("DB_NAME", "cqa"),
@@ -80,15 +80,8 @@ func Load() (*Config, error) {
 }
 
 func (c *Config) DSN() string {
-	// Check if using PostgreSQL (Render uses pgsql:// prefix)
-	dbType := os.Getenv("DB_TYPE")
-	if dbType == "postgres" {
-		// PostgreSQL format: postgres://user:pass@host:port/dbname
-		return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
-			c.DBUser, c.DBPassword, c.DBHost, c.DBPort, c.DBName)
-	}
-	// MySQL format (legacy support)
-	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+	// PostgreSQL format: postgres://user:pass@host:port/dbname
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		c.DBUser, c.DBPassword, c.DBHost, c.DBPort, c.DBName)
 }
 

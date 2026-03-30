@@ -12,7 +12,6 @@ require (
 	github.com/xuri/excelize/v2 v2.10.1
 	golang.org/x/crypto v0.49.0
 	google.golang.org/genai v1.51.0
-	gorm.io/driver/mysql v1.6.0
 	gorm.io/driver/postgres v1.5.9
 	gorm.io/gorm v1.31.1
 )
