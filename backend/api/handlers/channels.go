@@ -330,7 +330,31 @@ func TestChannelConnection(c *gin.Context) {
 		return
 	}
 
-	// Decrypt credentials
+	// Guesty uses server-side credentials, test via adapter health check
+	if channel.ChannelType == "guesty" {
+		cfg, _ := config.Load()
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		// Create Guesty adapter with empty credentials (uses global client)
+		credBytes := []byte("{}")
+		adapter, err := channels.NewAdapter(channel.ChannelType, credBytes)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "adapter_init_failed", "details": err.Error()})
+			return
+		}
+
+		// Test the connection using the adapter's health check
+		if err := adapter.HealthCheck(ctx); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "connection_failed", "details": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"status": "ok", "message": "Guesty API connection successful"})
+		return
+	}
+
+	// For Zalo/Facebook, decrypt and validate credentials
 	cfg, _ := config.Load()
 	credBytes, err := pkg.Decrypt(channel.CredentialsEncrypted, cfg.EncryptionKey)
 	if err != nil {

@@ -32,10 +32,17 @@ func NewSyncEngine(cfg *config.Config) *SyncEngine {
 func (s *SyncEngine) SyncChannel(ctx context.Context, channel models.Channel) error {
 	log.Printf("[sync] starting sync for channel %s (%s)", channel.Name, channel.ChannelType)
 
-	// Decrypt credentials
-	credBytes, err := pkg.Decrypt(channel.CredentialsEncrypted, s.cfg.EncryptionKey)
-	if err != nil {
-		return s.updateSyncStatus(channel.ID, "error", fmt.Sprintf("decrypt failed: %v", err))
+	// Guesty uses server-side credentials (global client), skip decryption
+	var credBytes []byte
+	if channel.ChannelType == "guesty" {
+		credBytes = []byte("{}") // Empty credentials for Guesty
+	} else {
+		// Decrypt credentials for Zalo/Facebook
+		var err error
+		credBytes, err = pkg.Decrypt(channel.CredentialsEncrypted, s.cfg.EncryptionKey)
+		if err != nil {
+			return s.updateSyncStatus(channel.ID, "error", fmt.Sprintf("decrypt failed: %v", err))
+		}
 	}
 
 	adapter, err := channels.NewAdapter(channel.ChannelType, credBytes)
@@ -178,17 +185,17 @@ func (s *SyncEngine) upsertConversation(tenantID, channelID string, conv channel
 
 	// Create new
 	newConv := models.Conversation{
-		ID:                       pkg.NewUUID(),
-		TenantID:                 tenantID,
-		ChannelID:                channelID,
-		ExternalConversationID:   conv.ExternalID,
-		ExternalUserID:           conv.ExternalUserID,
-		CustomerName:             conv.CustomerName,
-		LastMessageAt:            &conv.LastMessageAt,
-		MessageCount:             0,
-		Metadata:                 string(metadataJSON),
-		CreatedAt:                time.Now(),
-		UpdatedAt:                time.Now(),
+		ID:                     pkg.NewUUID(),
+		TenantID:               tenantID,
+		ChannelID:              channelID,
+		ExternalConversationID: conv.ExternalID,
+		ExternalUserID:         conv.ExternalUserID,
+		CustomerName:           conv.CustomerName,
+		LastMessageAt:          &conv.LastMessageAt,
+		MessageCount:           0,
+		Metadata:               string(metadataJSON),
+		CreatedAt:              time.Now(),
+		UpdatedAt:              time.Now(),
 	}
 	if err := db.DB.Create(&newConv).Error; err != nil {
 		return "", err
