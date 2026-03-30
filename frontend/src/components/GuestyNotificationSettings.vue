@@ -126,16 +126,16 @@
       <template v-if="form.use_custom_template">
         <v-alert type="info" variant="tonal" density="compact" class="mb-3">
           <div><strong>Biến sẵn có:</strong></div>
-          <div class="mt-2" v-pre>
-            <code>{{category}}</code> - Loại vấn đề<br>
-            <code>{{listing_name}}</code> - Tên căn hộ<br>
-            <code>{{guest_name}}</code> - Tên khách<br>
-            <code>{{reservation_id}}</code> - Mã đặt phòng<br>
-            <code>{{summary}}</code> - Tóm tắt<br>
-            <code>{{severity}}</code> - Mức độ nghiêm trọng<br>
-            <code>{{confidence}}</code> - Độ tin cậy<br>
-            <code>{{message}}</code> - Nội dung tin nhắn<br>
-            <code>{{timestamp}}</code> - Thời gian
+          <div class="mt-2">
+            <code>&lbrace;&lbrace;category&rbrace;&rbrace;</code> - Loại vấn đề<br>
+            <code>&lbrace;&lbrace;listing_name&rbrace;&rbrace;</code> - Tên căn hộ<br>
+            <code>&lbrace;&lbrace;guest_name&rbrace;&rbrace;</code> - Tên khách<br>
+            <code>&lbrace;&lbrace;reservation_id&rbrace;&rbrace;</code> - Mã đặt phòng<br>
+            <code>&lbrace;&lbrace;summary&rbrace;&rbrace;</code> - Tóm tắt<br>
+            <code>&lbrace;&lbrace;severity&rbrace;&rbrace;</code> - Mức độ nghiêm trọng<br>
+            <code>&lbrace;&lbrace;confidence&rbrace;&rbrace;</code> - Độ tin cậy<br>
+            <code>&lbrace;&lbrace;message&rbrace;&rbrace;</code> - Nội dung tin nhắn<br>
+            <code>&lbrace;&lbrace;timestamp&rbrace;&rbrace;</code> - Thời gian
           </div>
         </v-alert>
         <v-textarea
