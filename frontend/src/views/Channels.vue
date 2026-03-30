@@ -217,10 +217,7 @@
         :tenant-id="tenantId"
         :channel-id="notificationChannelId"
         @cancel="notificationDialog = false"
-        @saved="
-          notificationDialog = false
-          showSnack('Đã lưu cài đặt thông báo', 'success')
-        "
+        @saved="handleNotificationSaved"
       />
     </v-dialog>
 
@@ -396,6 +393,11 @@ function showSnack(text: string, color: string) {
 function openNotificationSettings(ch: any) {
   notificationChannelId.value = ch.id
   notificationDialog.value = true
+}
+
+function handleNotificationSaved() {
+  notificationDialog.value = false
+  showSnack('Đã lưu cài đặt thông báo', 'success')
 }
 
 
