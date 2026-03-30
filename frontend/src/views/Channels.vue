@@ -11,13 +11,13 @@
       <v-col v-for="ch in channelStore.channels" :key="ch.id" cols="12" sm="6" md="4">
         <v-card class="pa-4" style="cursor: pointer" @click="router.push(`/${tenantId}/channels/${ch.id}`)">
           <div class="d-flex align-center mb-3">
-            <v-icon :color="ch.channel_type === 'zalo_oa' ? 'blue' : 'indigo'" size="32" class="mr-3">
-              {{ ch.channel_type === 'zalo_oa' ? 'mdi-message-text' : 'mdi-facebook-messenger' }}
+            <v-icon :color="getChannelIconColor(ch.channel_type)" size="32" class="mr-3">
+              {{ getChannelIcon(ch.channel_type) }}
             </v-icon>
             <div class="flex-grow-1">
               <div class="text-subtitle-1 font-weight-bold">{{ ch.name }}</div>
-              <v-chip size="x-small" :color="ch.channel_type === 'zalo_oa' ? 'blue' : 'indigo'" variant="tonal">
-                {{ ch.channel_type === 'zalo_oa' ? $t('channel_zalo') : $t('channel_facebook') }}
+              <v-chip size="x-small" :color="getChannelIconColor(ch.channel_type)" variant="tonal">
+                {{ getChannelLabel(ch.channel_type) }}
               </v-chip>
               <div v-if="ch.channel_type === 'zalo_oa' && ch.external_id" class="text-caption text-grey mt-1" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                 OA: {{ ch.external_id }}
@@ -81,7 +81,11 @@
         <v-select
           v-model="newChannel.channel_type"
           :label="$t('channel_type')"
-          :items="[{ title: $t('channel_zalo'), value: 'zalo_oa' }, { title: $t('channel_facebook'), value: 'facebook' }]"
+          :items="[
+            { title: $t('channel_zalo'), value: 'zalo_oa' },
+            { title: $t('channel_facebook'), value: 'facebook' },
+            { title: $t('channel_guesty'), value: 'guesty' }
+          ]"
           class="mb-3"
         />
         <v-text-field v-model="newChannel.name" :label="$t('channel_name')" class="mb-3" />
@@ -100,12 +104,23 @@
         </template>
 
         <!-- Facebook -->
-        <template v-else>
+        <template v-if="newChannel.channel_type === 'facebook'">
           <v-btn variant="tonal" color="info" prepend-icon="mdi-book-open-variant" href="https://tanviet12.github.io/chat-quality-agent/usage/facebook.html" target="_blank" class="mb-3">
             Hướng dẫn kết nối Facebook Fanpage
           </v-btn>
           <v-text-field v-model="newChannel.creds.page_id" :label="$t('fb_page_id')" density="compact" class="mb-2" hint="Page ID từ Cài đặt trang Facebook" persistent-hint />
           <v-text-field v-model="newChannel.creds.access_token" :label="$t('fb_access_token')" density="compact" class="mb-2" hint="Page Access Token (nên dùng long-lived token)" persistent-hint />
+        </template>
+
+        <!-- Guesty -->
+        <template v-if="newChannel.channel_type === 'guesty'">
+          <v-alert type="info" variant="tonal" density="compact" class="mb-3">
+            <template v-slot:text>
+              <div>Sử dụng Guesty API credentials đã cấu hình trong server.</div>
+              <div class="mt-2">Webhook URL: <code>{{ webhookUrl }}</code></div>
+            </template>
+          </v-alert>
+          <v-text-field v-model="newChannel.creds.account_id" :label="'Guesty Account ID'" density="compact" class="mb-2" hint="Tìm trong Guesty Dashboard under Account Settings" persistent-hint />
         </template>
 
         <!-- Sync settings -->
@@ -144,11 +159,20 @@
             {{ $t('zalo_authorize') }}
           </v-btn>
           <v-btn
-            v-else
+            v-else-if="newChannel.channel_type === 'facebook'"
             color="indigo"
             :loading="creating"
             :disabled="!newChannel.name || !newChannel.creds.page_id || !newChannel.creds.access_token"
             @click="createFacebook"
+          >
+            {{ $t('create') }}
+          </v-btn>
+          <v-btn
+            v-else-if="newChannel.channel_type === 'guesty'"
+            color="purple"
+            :loading="creating"
+            :disabled="!newChannel.name || !newChannel.creds.account_id"
+            @click="createGuesty"
           >
             {{ $t('create') }}
           </v-btn>
@@ -399,4 +423,59 @@ async function saveEdit() {
     savingEdit.value = false
   }
 }
+
+async function createGuesty() {
+  creating.value = true
+  try {
+    await channelStore.createChannel(tenantId.value, {
+      channel_type: newChannel.channel_type,
+      name: newChannel.name,
+      credentials: {
+        account_id: newChannel.creds.account_id,
+      },
+      metadata: JSON.stringify({ sync_files: newChannel.sync_files, sync_interval: newChannel.sync_interval }),
+    })
+    showDialog.value = false
+    newChannel.name = ''
+    newChannel.creds = {}
+    showSnack(t('success'), 'success')
+    await channelStore.fetchChannels(tenantId.value)
+  } catch {
+    showSnack(t('error'), 'error')
+  } finally {
+    creating.value = false
+  }
+}
+
+function getChannelIcon(type: string) {
+  switch (type) {
+    case 'zalo_oa': return 'mdi-message-text'
+    case 'facebook': return 'mdi-facebook-messenger'
+    case 'guesty': return 'mdi-home-heart'
+    default: return 'mdi-chat'
+  }
+}
+
+function getChannelIconColor(type: string) {
+  switch (type) {
+    case 'zalo_oa': return 'blue'
+    case 'facebook': return 'indigo'
+    case 'guesty': return 'purple'
+    default: return 'grey'
+  }
+}
+
+function getChannelLabel(type: string) {
+  switch (type) {
+    case 'zalo_oa': return t('channel_zalo')
+    case 'facebook': return t('channel_facebook')
+    case 'guesty': return t('channel_guesty')
+    default: return type
+  }
+}
+
+const webhookUrl = computed(() => {
+  return `${window.location.origin}/api/v1/webhooks/guesty`
+})
+
 </script>
