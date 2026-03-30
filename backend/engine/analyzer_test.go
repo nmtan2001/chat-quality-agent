@@ -95,7 +95,7 @@ func TestMockAIProviderQCFail(t *testing.T) {
 			Content:      string(respJSON),
 			InputTokens:  200,
 			OutputTokens: 120,
-			Model:        "gemini-2.0-flash",
+			Model:        "gemini-2.5-flash",
 			Provider:     "gemini",
 		},
 	}
@@ -137,8 +137,8 @@ func TestCalculateCostUSD(t *testing.T) {
 		maxCost  float64
 	}{
 		{"claude sonnet small", "claude", "claude-sonnet-4-6", 1000, 500, 0.01, 0.02},
-		{"claude haiku cheap", "claude", "claude-haiku-3-5", 1000, 500, 0.001, 0.005},
-		{"gemini flash very cheap", "gemini", "gemini-2.0-flash", 1000, 500, 0.0001, 0.001},
+		{"claude haiku cheap", "claude", "claude-haiku-4-5", 1000, 500, 0.001, 0.005},
+		{"gemini flash very cheap", "gemini", "gemini-2.5-flash", 1000, 500, 0.0001, 0.001},
 		{"zero tokens", "claude", "claude-sonnet-4-6", 0, 0, 0, 0},
 	}
 
