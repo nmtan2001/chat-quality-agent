@@ -20,7 +20,8 @@ func Connect(dsn string, isProduction bool) error {
 		logLevel = logger.Warn
 	}
 
-	DB, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+	var err error
+	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logLevel),
 	})
 	if err != nil {
