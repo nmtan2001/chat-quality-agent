@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/nmtan2001/chat-quality-agent/db/models"
 	_ "github.com/lib/pq"
+	"github.com/nmtan2001/chat-quality-agent/db/migrations"
+	"github.com/nmtan2001/chat-quality-agent/db/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -56,6 +57,7 @@ func AutoMigrate() error {
 		&models.OAuthAuthorizationCode{},
 		&models.OAuthToken{},
 		&models.ActivityLog{},
+		&models.GuestyNotificationSetting{},
 	)
 	if err != nil {
 		return fmt.Errorf("auto-migrate: %w", err)
@@ -63,6 +65,11 @@ func AutoMigrate() error {
 
 	// Add unique constraints that GORM can't express directly
 	addUniqueConstraints()
+
+	// Run Guesty-specific migrations
+	if err := migrations.CreateGuestyNotificationSettingsTable(); err != nil {
+		log.Printf("[Migration] Guesty notification settings migration warning: %v", err)
+	}
 
 	log.Println("Database migration completed")
 	return nil

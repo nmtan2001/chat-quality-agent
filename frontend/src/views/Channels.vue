@@ -51,6 +51,9 @@
             <v-btn size="small" variant="tonal" color="primary" prepend-icon="mdi-sync" :loading="syncing === ch.id" @click="syncNow(ch.id)">
               {{ $t('sync_now') }}
             </v-btn>
+            <v-btn v-if="ch.channel_type === 'guesty'" size="small" variant="tonal" color="purple" prepend-icon="mdi-bell" @click="openNotificationSettings(ch)">
+              Thông báo
+            </v-btn>
             <v-btn v-if="ch.last_sync_status === 'error'" size="small" variant="tonal" color="warning" prepend-icon="mdi-link-variant" :loading="reauthing === ch.id" @click="reauthChannel(ch.id)">
               Kết nối lại
             </v-btn>
@@ -207,6 +210,20 @@
       </v-card>
     </v-dialog>
 
+    <!-- Guesty Notification Settings Dialog -->
+    <v-dialog v-model="notificationDialog" max-width="700">
+      <GuestyNotificationSettings
+        v-if="notificationDialog"
+        :tenant-id="tenantId"
+        :channel-id="notificationChannelId"
+        @cancel="notificationDialog = false"
+        @saved="
+          notificationDialog = false
+          showSnack('Đã lưu cài đặt thông báo', 'success')
+        "
+      />
+    </v-dialog>
+
     <!-- Snackbar -->
     <v-snackbar v-model="snackbar" :color="snackColor" timeout="3000">{{ snackText }}</v-snackbar>
   </div>
@@ -218,6 +235,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useChannelStore } from '../stores/channels'
 import api from '../api'
+import GuestyNotificationSettings from '../components/GuestyNotificationSettings.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -229,6 +247,8 @@ const showDialog = ref(false)
 const creating = ref(false)
 const syncing = ref('')
 const reauthing = ref('')
+const notificationDialog = ref(false)
+const notificationChannelId = ref('')
 const snackbar = ref(false)
 const snackText = ref('')
 const snackColor = ref('success')
@@ -373,6 +393,10 @@ function showSnack(text: string, color: string) {
   snackbar.value = true
 }
 
+function openNotificationSettings(ch: any) {
+  notificationChannelId.value = ch.id
+  notificationDialog.value = true
+}
 
 
 // Edit channel

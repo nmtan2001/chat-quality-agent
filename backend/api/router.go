@@ -127,6 +127,11 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			tenant.GET("/channels/:channelId/sync-history", handlers.GetChannelSyncHistory)
 			tenant.DELETE("/channels/:channelId/conversations", middleware.RequireRole("owner", "admin"), handlers.PurgeChannelConversations)
 
+			// Guesty notification settings
+			tenant.GET("/guesty/:channelId/notifications", handlers.GetGuestyNotificationSettings)
+			tenant.PUT("/guesty/:channelId/notifications", handlers.UpdateGuestyNotificationSettings)
+			tenant.POST("/guesty/:channelId/notifications/test", handlers.TestGuestyNotification)
+
 			// Conversations & Messages
 			tenant.GET("/onboarding-status", handlers.GetOnboardingStatus)
 			tenant.GET("/conversations", handlers.ListConversations)

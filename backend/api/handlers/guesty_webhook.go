@@ -13,6 +13,7 @@ import (
 	"github.com/nmtan2001/chat-quality-agent/api/middleware"
 	"github.com/nmtan2001/chat-quality-agent/db"
 	"github.com/nmtan2001/chat-quality-agent/db/models"
+	"github.com/nmtan2001/chat-quality-agent/notifications"
 	"github.com/nmtan2001/chat-quality-agent/pkg"
 	"gorm.io/gorm"
 )
@@ -317,21 +318,37 @@ func checkUrgentIssue(ctx context.Context, tenantID, conversationID, guestName, 
 	if result.IsUrgent {
 		log.Printf("[Urgent Check] Urgent issue detected: %s - %s (confidence: %.2f)", result.Category, result.Summary, result.Confidence)
 
-		// Create notification log with confidence tracking
-		notification := models.NotificationLog{
-			ID:       pkg.NewUUID(),
-			TenantID: tenantID,
-			Subject:  fmt.Sprintf("[URGENT] %s issue at %s", result.Category, listingName),
-			Body: fmt.Sprintf("Guest: %s\nListing: %s\nReservation: %s\nIssue: %s\nSeverity: %s\nConfidence: %.2f\n\nMessage: %s",
-				guestName, listingName, reservationID, result.Summary, result.Severity, result.Confidence, message),
-			Status:    "pending",
-			SentAt:    time.Now(),
-			CreatedAt: time.Now(),
-		}
-		db.DB.WithContext(ctx).Create(&notification)
+		// Send instant alert via configured channels (Telegram/Email)
+		// Launch in separate goroutine to avoid blocking webhook response
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("[Guesty Alert] Panic in SendGuestyAlert: %v", r)
+				}
+			}()
 
-		// TODO: Send instant alert via configured channels (Telegram/Email)
-		// This uses the existing notification dispatcher
+			alertCtx, alertCancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer alertCancel()
+
+			urgentDetails := notifications.UrgentIssueDetails{
+				TenantID:       tenantID,
+				ChannelID:      channel.ID,
+				GuestName:      guestName,
+				ListingName:    listingName,
+				ReservationID:  reservationID,
+				Category:       result.Category,
+				Severity:       result.Severity,
+				Summary:        result.Summary,
+				Confidence:     result.Confidence,
+				MessageContent: message,
+			}
+
+			if err := notifications.SendGuestyAlert(alertCtx, urgentDetails); err != nil {
+				log.Printf("[Guesty Alert] Failed to send urgent alert: %v", err)
+			} else {
+				log.Printf("[Guesty Alert] Urgent alert sent successfully for channel %s", channel.ID)
+			}
+		}()
 	}
 }
 

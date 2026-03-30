@@ -1,0 +1,249 @@
+<template>
+  <v-card class="pa-6">
+    <v-card-title>Cài đặt thông báo</v-card-title>
+
+    <v-switch
+      v-model="form.is_enabled"
+      label="Bật thông báo"
+      color="primary"
+      class="mb-4"
+    />
+
+    <v-divider class="mb-4" />
+
+    <!-- Telegram Section -->
+    <div class="mb-6">
+      <div class="d-flex align-center mb-3">
+        <v-icon color="blue" class="mr-2">mdi-telegram</v-icon>
+        <h3 class="text-h6">Telegram</h3>
+        <v-switch v-model="form.telegram_enabled" class="ml-auto" color="blue" />
+      </div>
+
+      <template v-if="form.telegram_enabled">
+        <v-text-field
+          v-model="form.telegram_config.bot_token"
+          label="Bot Token"
+          hint="Nhập token từ @BotFather"
+          persistent-hint
+          type="password"
+          variant="outlined"
+          density="compact"
+          class="mb-2"
+        />
+        <v-text-field
+          v-model="form.telegram_config.chat_id"
+          label="Chat ID"
+          hint="ID nhóm Telegram nhận thông báo"
+          persistent-hint
+          variant="outlined"
+          density="compact"
+        />
+      </template>
+    </div>
+
+    <v-divider class="mb-4" />
+
+    <!-- Email Section -->
+    <div class="mb-6">
+      <div class="d-flex align-center mb-3">
+        <v-icon color="orange" class="mr-2">mdi-email</v-icon>
+        <h3 class="text-h6">Email</h3>
+        <v-switch v-model="form.email_enabled" class="ml-auto" color="orange" />
+      </div>
+
+      <template v-if="form.email_enabled">
+        <v-row class="mb-2">
+          <v-col cols="12" sm="6">
+            <v-text-field
+              v-model="form.email_config.smtp_host"
+              label="SMTP Host"
+              hint="Ví dụ: smtp.gmail.com"
+              persistent-hint
+              variant="outlined"
+              density="compact"
+            />
+          </v-col>
+          <v-col cols="12" sm="6">
+            <v-text-field
+              v-model.number="form.email_config.smtp_port"
+              label="SMTP Port"
+              hint="Mặc định: 587"
+              type="number"
+              variant="outlined"
+              density="compact"
+            />
+          </v-col>
+        </v-row>
+        <v-row class="mb-2">
+          <v-col cols="12" sm="6">
+            <v-text-field
+              v-model="form.email_config.smtp_user"
+              label="Username"
+              variant="outlined"
+              density="compact"
+            />
+          </v-col>
+          <v-col cols="12" sm="6">
+            <v-text-field
+              v-model="form.email_config.smtp_pass"
+              label="Password"
+              type="password"
+              variant="outlined"
+              density="compact"
+            />
+          </v-col>
+        </v-row>
+        <v-text-field
+          v-model="form.email_config.from"
+          label="From Address"
+          hint="Địa chỉ gửi (noreply@yourdomain.com)"
+          persistent-hint
+          variant="outlined"
+          density="compact"
+          class="mb-2"
+        />
+        <v-text-field
+          v-model="form.email_config.to"
+          label="To Addresses"
+          hint="Địa chỉ nhận, cách nhau bằng dấu phẩy"
+          persistent-hint
+          variant="outlined"
+          density="compact"
+        />
+      </template>
+    </div>
+
+    <v-divider class="mb-4" />
+
+    <!-- Custom Template -->
+    <div class="mb-4">
+      <div class="d-flex align-center mb-3">
+        <v-icon color="purple" class="mr-2">mdi-file-document-edit</v-icon>
+        <h3 class="text-h6">Mẫu thông báo tùy chỉnh</h3>
+        <v-switch v-model="form.use_custom_template" class="ml-auto" color="purple" />
+      </div>
+
+      <template v-if="form.use_custom_template">
+        <v-alert type="info" variant="tonal" density="compact" class="mb-3">
+          <div><strong>Biến sẵn có:</strong></div>
+          <div class="mt-2">
+            <code>{{category}}</code> - Loại vấn đề<br>
+            <code>{{listing_name}}</code> - Tên căn hộ<br>
+            <code>{{guest_name}}</code> - Tên khách<br>
+            <code>{{reservation_id}}</code> - Mã đặt phòng<br>
+            <code>{{summary}}</code> - Tóm tắt<br>
+            <code>{{severity}}</code> - Mức độ nghiêm trọng<br>
+            <code>{{confidence}}</code> - Độ tin cậy<br>
+            <code>{{message}}</code> - Nội dung tin nhắn<br>
+            <code>{{timestamp}}</code> - Thời gian
+          </div>
+        </v-alert>
+        <v-textarea
+          v-model="form.custom_template"
+          label="Nội dung tùy chỉnh"
+          rows="8"
+          variant="outlined"
+          auto-grow
+        />
+      </template>
+    </div>
+
+    <v-card-actions class="mt-4">
+      <v-spacer />
+      <v-btn variant="text" @click="$emit('cancel')">Hủy</v-btn>
+      <v-btn
+        variant="tonal"
+        @click="testSettings"
+        :loading="testing"
+        :disabled="!canTest"
+      >
+        Kiểm tra
+      </v-btn>
+      <v-btn
+        color="primary"
+        @click="saveSettings"
+        :loading="saving"
+      >
+        Lưu cài đặt
+      </v-btn>
+    </v-card-actions>
+  </v-card>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive, computed, onMounted } from 'vue'
+import api from '../api'
+
+const props = defineProps<{
+  tenantId: string
+  channelId: string
+}>()
+
+const emit = defineEmits(['cancel', 'saved'])
+
+const form = reactive({
+  is_enabled: true,
+  telegram_enabled: false,
+  telegram_config: {
+    bot_token: '',
+    chat_id: ''
+  },
+  email_enabled: false,
+  email_config: {
+    smtp_host: '',
+    smtp_port: 587,
+    smtp_user: '',
+    smtp_pass: '',
+    from: '',
+    to: ''
+  },
+  use_custom_template: false,
+  custom_template: ''
+})
+
+const saving = ref(false)
+const testing = ref(false)
+
+const canTest = computed(() => {
+  return (form.telegram_enabled && form.telegram_config.bot_token && form.telegram_config.chat_id) ||
+         (form.email_enabled && form.email_config.smtp_host && form.email_config.to)
+})
+
+async function loadSettings() {
+  try {
+    const { data } = await api.get(`/tenants/${props.tenantId}/guesty/${props.channelId}/notifications`)
+    Object.assign(form, data)
+  } catch (e: any) {
+    console.error('Failed to load settings:', e)
+  }
+}
+
+async function saveSettings() {
+  saving.value = true
+  try {
+    await api.put(`/tenants/${props.tenantId}/guesty/${props.channelId}/notifications`, form)
+    emit('saved')
+  } catch (e: any) {
+    alert('Lưu thất bại: ' + (e.response?.data?.error || e.message))
+  } finally {
+    saving.value = false
+  }
+}
+
+async function testSettings() {
+  testing.value = true
+  try {
+    await api.post(`/tenants/${props.tenantId}/guesty/${props.channelId}/notifications/test`)
+    alert('Đã gửi thông báo kiểm tra!')
+  } catch (e: any) {
+    alert('Gửi thất bại: ' + (e.response?.data?.error || e.message))
+  } finally {
+    testing.value = false
+  }
+}
+
+// Load on mount
+onMounted(() => {
+  loadSettings()
+})
+</script>
