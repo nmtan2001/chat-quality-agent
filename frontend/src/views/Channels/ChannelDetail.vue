@@ -27,8 +27,8 @@
       <v-row>
         <v-col cols="6" sm="3">
           <div class="text-caption text-grey">Loại kênh</div>
-          <v-chip size="small" :color="channel.channel_type === 'facebook' ? 'blue' : 'green'" variant="tonal">
-            {{ channel.channel_type === 'facebook' ? 'Facebook' : 'Zalo OA' }}
+          <v-chip size="small" :color="getChannelTypeColor(channel.channel_type)" variant="tonal">
+            {{ getChannelTypeLabel(channel.channel_type) }}
           </v-chip>
         </v-col>
         <v-col cols="6" sm="3">
@@ -225,6 +225,24 @@ function formatSyncInterval(mins: number) {
 
 function goToMessages() {
   router.push(`/${tenantId.value}/messages?channel_id=${channelId.value}`)
+}
+
+function getChannelTypeColor(type: string) {
+  switch (type) {
+    case 'facebook': return 'blue'
+    case 'guesty': return 'purple'
+    case 'zalo_oa': return 'green'
+    default: return 'grey'
+  }
+}
+
+function getChannelTypeLabel(type: string) {
+  switch (type) {
+    case 'facebook': return 'Facebook Messenger'
+    case 'guesty': return 'Guesty'
+    case 'zalo_oa': return 'Zalo OA'
+    default: return type
+  }
 }
 
 async function doSync() {
