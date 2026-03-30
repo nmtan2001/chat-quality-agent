@@ -30,9 +30,9 @@ import (
 var httpClientWithTimeout = &http.Client{Timeout: 30 * time.Second}
 
 type CreateChannelRequest struct {
-	ChannelType string          `json:"channel_type" binding:"required,oneof=zalo_oa facebook"`
+	ChannelType string          `json:"channel_type" binding:"required,oneof=zalo_oa facebook guesty"`
 	Name        string          `json:"name" binding:"required,min=2,max=255"`
-	Credentials json.RawMessage `json:"credentials" binding:"required"` // JSON: varies by type
+	Credentials json.RawMessage `json:"credentials"` // JSON: varies by type, optional for Guesty
 	Metadata    string          `json:"metadata"`
 }
 
@@ -89,19 +89,41 @@ func CreateChannel(c *gin.Context) {
 
 	tenantID := middleware.GetTenantID(c)
 
-	// Encrypt credentials
-	cfg, _ := config.Load()
-	encrypted, err := pkg.Encrypt([]byte(req.Credentials), cfg.EncryptionKey)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "encryption_failed"})
-		return
+	// Guesty uses metadata (account_id) instead of encrypted credentials
+	var credentialsToStore []byte
+	var externalID string
+	channelName := req.Name
+
+	if req.ChannelType == "guesty" {
+		// Guesty doesn't need encrypted credentials - account_id is in metadata
+		credentialsToStore = []byte{}
+		externalID = ""
+		// Validate metadata contains account_id
+		if req.Metadata == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "account_id_required", "details": "Guesty requires account_id in metadata"})
+			return
+		}
+		var metaMap map[string]interface{}
+		if err := json.Unmarshal([]byte(req.Metadata), &metaMap); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_metadata", "details": "Metadata must be valid JSON"})
+			return
+		}
+		if _, ok := metaMap["account_id"]; !ok {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "account_id_required", "details": "account_id is required in metadata"})
+			return
+		}
+	} else {
+		// Encrypt credentials for Zalo/Facebook
+		cfg, _ := config.Load()
+		encrypted, err := pkg.Encrypt([]byte(req.Credentials), cfg.EncryptionKey)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "encryption_failed"})
+			return
+		}
+		credentialsToStore = encrypted
 	}
 
 	// For Facebook: exchange user/system token for Page Access Token
-	credentialsToStore := encrypted
-	externalID := ""
-	channelName := req.Name
-
 	if req.ChannelType == "facebook" {
 		var fbCreds struct {
 			PageID      string `json:"page_id"`
@@ -122,6 +144,7 @@ func CreateChannel(c *gin.Context) {
 			}
 			externalID = pageID
 
+			cfg, _ := config.Load()
 			updatedCreds, _ := json.Marshal(fbCreds)
 			credentialsToStore, err = pkg.Encrypt(updatedCreds, cfg.EncryptionKey)
 			if err != nil {
