@@ -251,7 +251,7 @@ func processMessageWebhook(payload GuestyWebhookPayload, accountID string) error
 // checkUrgentIssue uses AI to detect urgent issues in customer messages.
 func checkUrgentIssue(ctx context.Context, tenantID, conversationID, guestName, message, listingName, reservationID string) {
 	// Get AI provider from tenant settings
-	var setting models.Setting
+	var setting models.AppSetting
 	if err := db.DB.WithContext(ctx).Where("tenant_id = ? AND key = ?", tenantID, "ai").First(&setting).Error; err != nil {
 		log.Printf("[Urgent Check] No AI settings for tenant %s: %v", tenantID, err)
 		return
@@ -268,20 +268,15 @@ func checkUrgentIssue(ctx context.Context, tenantID, conversationID, guestName, 
 	}
 
 	var provider ai.AIProvider
-	var err error
 
 	switch aiConfig.Provider {
 	case "claude":
-		provider, err = ai.NewClaudeProvider(aiConfig.APIKey, aiConfig.Model)
+		// Claude requires maxTokens parameter (use 4096 as default)
+		provider = ai.NewClaudeProvider(aiConfig.APIKey, aiConfig.Model, 4096)
 	case "gemini":
-		provider, err = ai.NewGeminiProvider(aiConfig.APIKey, aiConfig.Model)
+		provider = ai.NewGeminiProvider(aiConfig.APIKey, aiConfig.Model)
 	default:
 		log.Printf("[Urgent Check] Unsupported AI provider: %s", aiConfig.Provider)
-		return
-	}
-
-	if err != nil {
-		log.Printf("[Urgent Check] Failed to create AI provider: %v", err)
 		return
 	}
 
